@@ -67,10 +67,14 @@ export function useKingsCorner() {
   const cheat = useCallback(() => {
     setGameState((prev) => {
       if (!prev) return null;
-      const newDeck = shuffle([...prev.deck, ...(prev.drawnCard ? [prev.drawnCard] : [])]);
+      const newDeck = shuffle([
+        ...prev.deck,
+        ...prev.discardPile,
+        ...(prev.drawnCard ? [prev.drawnCard] : []),
+      ]);
       const nextCard = drawCard(newDeck);
       const phase = !nextCard || !canPlaceAnywhere(nextCard, prev.grid) ? "gameover" : "playing";
-      return { ...prev, deck: newDeck, drawnCard: nextCard ?? undefined, cheated: true, phase };
+      return { ...prev, deck: newDeck, discardPile: [], drawnCard: nextCard ?? undefined, cheated: true, phase };
     });
   }, []);
 

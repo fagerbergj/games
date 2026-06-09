@@ -76,4 +76,39 @@ describe("cheat", () => {
     act(() => { result.current.cheat(); });
     expect(totalCards(result.current.gameState!)).toBe(52);
   });
+
+  it("recovers when deck AND drawn card are both empty (the real bug)", () => {
+    const { result } = renderHook(() => useKingsCorner());
+    act(() => { result.current.initializeGame(); });
+
+    const allCards = createDeck();
+    const grid: GameState["grid"] = Array(4).fill(null).map(() => Array(4).fill(null));
+    // Put 6 cards on the grid
+    for (let r = 0; r < 2; r++) {
+      for (let c = 0; c < 3; c++) {
+        grid[r][c] = allCards.shift()!;
+      }
+    }
+    // All remaining cards in discard pile, deck and drawnCard empty
+    act(() => {
+      result.current.setGameState((prev) => prev ? {
+        ...prev,
+        phase: "gameover",
+        deck: [],
+        discardPile: allCards,
+        drawnCard: undefined,
+        grid,
+      } : null);
+    });
+
+    expect(totalCards(result.current.gameState!)).toBe(52);
+    expect(result.current.gameState!.phase).toBe("gameover");
+
+    act(() => { result.current.cheat(); });
+
+    // Discard pile cards should now be back in play
+    expect(totalCards(result.current.gameState!)).toBe(52);
+    expect(result.current.gameState!.discardPile.length).toBe(0);
+    expect(result.current.gameState!.phase).toBe("playing");
+  });
 });
