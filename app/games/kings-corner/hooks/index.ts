@@ -1,0 +1,1 @@
+export { useKingsCorner } from "./useKingsCorner";
