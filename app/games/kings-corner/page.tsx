@@ -139,7 +139,7 @@ export default function GamePage() {
                 onClick={cheat}
                 className="bg-red-900 hover:bg-red-800 text-red-300 font-bold py-3 px-8 rounded-lg text-lg transition-colors"
               >
-                {gameState.cheated ? "Cheat Again" : "I'm a Cheater"}
+                Cheat
               </button>
             </div>
           </div>
