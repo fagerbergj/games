@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useKingsCorner } from "./hooks/useKingsCorner";
 import CardComponent from "./components/card";
 import { findPairsAddingTo10, isValidGridPosition } from "./lib/validation";
@@ -16,22 +16,17 @@ export default function GamePage() {
     resumePlaying,
   } = useKingsCorner();
 
-  const [playerName, setPlayerName] = useState<string>("Player");
-  const [showSetup, setShowSetup] = useState(true);
   const [selectedDiscardCard, setSelectedDiscardCard] = useState<{ row: number; col: number } | null>(null);
   const [highlightedDiscardCards, setHighlightedDiscardCards] = useState<{ row: number; col: number }[]>([]);
   const [expandedPile, setExpandedPile] = useState<"deck" | "discard" | null>(null);
 
-  const handleStartGame = () => {
-    initializeGame();
-    setShowSetup(false);
-  };
+  useEffect(() => { initializeGame(); }, []);
 
   const handleReset = () => {
-    resetGame();
-    setShowSetup(true);
+    initializeGame();
     setSelectedDiscardCard(null);
     setHighlightedDiscardCards([]);
+    setExpandedPile(null);
   };
 
   const getCardHighlightClass = (row: number, col: number) => {
@@ -109,54 +104,32 @@ export default function GamePage() {
     }
   };
 
-  if (gameState?.phase === "gameover") {
+  if (!gameState) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold mb-4">
-            {gameState.deck.length === 0 ? "Out of Cards!" : "No Moves Available!"}
-          </h1>
-          <p className="text-xl mb-8">Better luck next time!</p>
-          <button
-            onClick={handleReset}
-            className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-3 px-6 rounded-lg"
-          >
-            Play Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (showSetup) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-900">
-        <div className="w-full max-w-md p-8 text-center">
-          <h1 className="text-4xl font-bold mb-8 text-yellow-400">Kings Corner</h1>
-          <p className="mb-8 text-zinc-300">
-            Fill the 4x4 grid with Kings on corners, Queens on top/bottom edges, Jacks on side edges.
-            Win by clearing all cards!
-          </p>
-          <input
-            type="text"
-            value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white mb-4"
-            placeholder="Enter your name"
-          />
-          <button
-            onClick={handleStartGame}
-            className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-3 px-6 rounded-lg"
-          >
-            Start Game
-          </button>
-        </div>
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="text-zinc-400">Loading…</div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col min-h-screen bg-zinc-950 text-zinc-100">
+      {gameState.phase === "gameover" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl p-10 text-center max-w-sm w-full mx-4">
+            <h2 className="text-3xl font-bold text-white mb-3">
+              {gameState.deck.length === 0 ? "Out of Cards!" : "No Moves Available!"}
+            </h2>
+            <p className="text-zinc-400 mb-8">Better luck next time!</p>
+            <button
+              onClick={handleReset}
+              className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-3 px-8 rounded-lg text-lg transition-colors"
+            >
+              Play Again
+            </button>
+          </div>
+        </div>
+      )}
       <header className="bg-zinc-900 border-b border-zinc-800 p-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <h1 className="text-2xl font-bold text-yellow-400">Kings Corner</h1>
@@ -171,26 +144,56 @@ export default function GamePage() {
 
       <main className="flex-1 max-w-7xl mx-auto w-full p-4">
         <div className="text-center mb-6">
-          <p className="text-xl text-zinc-300 mb-2">{playerName}'s Turn</p>
-          <div className="flex items-center justify-center gap-3 mb-2">
+          <div className="flex items-center justify-center gap-3 mb-2 relative">
+            {expandedPile && (
+              <div className="fixed inset-0 z-10" onClick={() => setExpandedPile(null)} />
+            )}
             <button
               onClick={() => setExpandedPile(expandedPile === "deck" ? null : "deck")}
-              className="bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-sm px-3 py-1 rounded-full transition-colors"
+              className={`text-zinc-400 text-sm px-3 py-1 rounded-full transition-colors ${expandedPile === "deck" ? "bg-zinc-600" : "bg-zinc-800 hover:bg-zinc-700"}`}
             >
-              Deck: <span className="font-bold text-white">{gameState?.deck.length ?? 0}</span>
+              Deck: <span className="font-bold text-white">{gameState.deck.length}</span>
             </button>
             <button
               onClick={() => setExpandedPile(expandedPile === "discard" ? null : "discard")}
-              className="bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-sm px-3 py-1 rounded-full transition-colors"
+              className={`text-zinc-400 text-sm px-3 py-1 rounded-full transition-colors ${expandedPile === "discard" ? "bg-zinc-600" : "bg-zinc-800 hover:bg-zinc-700"}`}
             >
-              Discard: <span className="font-bold text-white">{gameState?.discardPile.length ?? 0}</span>
+              Discard: <span className="font-bold text-white">{gameState.discardPile.length}</span>
             </button>
+            {expandedPile && (
+              <div className="absolute top-full mt-2 z-20 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden min-w-[140px]">
+                <div className="px-4 py-2 bg-zinc-800 border-b border-zinc-700 text-left">
+                  <span className="text-white font-bold text-sm">
+                    {expandedPile === "deck" ? "Deck" : "Discard Pile"}
+                  </span>
+                </div>
+                {(() => {
+                  const rows = getCardCounts(expandedPile === "deck" ? gameState.deck : gameState.discardPile);
+                  if (rows.length === 0) return (
+                    <div className="px-4 py-3 text-zinc-500 text-sm">Empty</div>
+                  );
+                  return (
+                    <table className="text-sm w-full">
+                      <thead>
+                        <tr className="text-zinc-500 text-xs uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left font-medium">Rank</th>
+                          <th className="px-4 py-2 text-right font-medium">Count</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map(({ rank, symbol, count }) => (
+                          <tr key={rank} className="border-t border-zinc-800">
+                            <td className="px-4 py-1.5 text-white">{symbol}</td>
+                            <td className="px-4 py-1.5 text-right font-bold text-white">{count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                })()}
+              </div>
+            )}
           </div>
-          {expandedPile && gameState && (
-            <p className="text-zinc-400 text-sm mb-2">
-              {cardCountBreakdown(expandedPile === "deck" ? gameState.deck : gameState.discardPile)}
-            </p>
-          )}
           {gameState?.phase === "cleared-grid" && (
             <p className="text-green-400 font-bold mt-2">
               {selectedDiscardCard ? "Click to discard" : "Click a card to discard (10s auto, others need pair)"}
@@ -292,14 +295,12 @@ function getGridPositionLabel(row: number, col: number): string {
   return "Any";
 }
 
-function cardCountBreakdown(cards: import("./lib/types").Card[]): string {
-  if (cards.length === 0) return "Empty";
+function getCardCounts(cards: import("./lib/types").Card[]): { rank: number; symbol: string; count: number }[] {
   const counts = new Map<number, number>();
   for (const card of cards) {
     counts.set(card.rank, (counts.get(card.rank) ?? 0) + 1);
   }
   return Array.from(counts.entries())
     .sort(([a], [b]) => a - b)
-    .map(([rank, count]) => `${count} ${getCardSymbol(rank)}${count !== 1 ? "s" : ""}`)
-    .join("  ");
+    .map(([rank, count]) => ({ rank, symbol: getCardSymbol(rank), count }));
 }
