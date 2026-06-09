@@ -1,4 +1,4 @@
-import type { PlaywrightTestConfig } from "@playwright/test";
+import type { PlaywrightTestConfig } from "playwright/test";
 
 const config: PlaywrightTestConfig = {
   testDir: "./app/games/kings-corner/__tests__",

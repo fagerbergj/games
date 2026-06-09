@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import type { GameMetadata } from "@/app/games";
 
 export default function GameCard({ game }: { game: GameMetadata }) {
   return (

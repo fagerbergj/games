@@ -1,6 +1,6 @@
-import type { Config } from "next";
+import type { NextConfig } from "next";
 
-const config: Config = {
+const config: NextConfig = {
   output: "standalone",
   typescript: {
     ignoreBuildErrors: true,

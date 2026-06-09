@@ -1,3 +1,3 @@
 export { createDeck, shuffle, dealCards, drawCard, getCardValue, getCardSymbol, getSuitSymbol } from "./deck";
-export { Card } from "./types";
-export { isValidMove, isValidKingPlacement, isGameFinished, calculateScore } from "./validation";
+export type { Card } from "./types";
+export { isValidGridPosition, isValidKingPlacement, isGameFinished, calculateScore } from "./validation";

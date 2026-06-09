@@ -69,11 +69,11 @@ export function isValidGridPosition(
   return true;
 }
 
-export function isGridFull(grid: Card[][]): boolean {
+export function isGridFull(grid: (Card | null)[][]): boolean {
   return grid.every((row) => row.every((cell) => cell !== null));
 }
 
-export function clearGrid(grid: Card[][]): Card[][] {
+export function clearGrid(grid: (Card | null)[][]): (Card | null)[][] {
   return grid.map((row) => row.map(() => null));
 }
 
@@ -99,7 +99,7 @@ export function calculateScore(hand: Card[]): number {
   }, 0);
 }
 
-export function findPairsAddingTo10(grid: Card[][]): { row: number; col: number }[][] {
+export function findPairsAddingTo10(grid: (Card | null)[][]): { row: number; col: number }[][] {
   const pairs: { row: number; col: number }[][] = [];
   const cards: { row: number; col: number; rank: number }[] = [];
 

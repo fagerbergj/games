@@ -19,7 +19,7 @@ export interface GameState {
   discardPile: Card[];
   currentTurn: number;
   phase: "setup" | "playing" | "cleared-grid" | "gameover";
-  grid: Card[][];
+  grid: (Card | null)[][];
   drawnCard?: Card;
   winner?: string;
 }

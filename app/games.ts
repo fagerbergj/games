@@ -1,4 +1,12 @@
-import type { GameMetadata } from "@/app/games";
+export interface GameMetadata {
+  id: string;
+  title: string;
+  description: string;
+  thumbnail: string;
+  players: number[];
+  difficulty: string;
+  duration: string;
+}
 
 const games: GameMetadata[] = [];
 

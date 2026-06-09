@@ -145,7 +145,7 @@ describe("Validation", () => {
 
   describe("isGridFull", () => {
     it("should return true when grid is full", () => {
-      const grid: Card[][] = [
+      const grid: (Card | null)[][] = [
         [{ id: "1", suit: "hearts", rank: 13, faceUp: true }, { id: "2", suit: "diamonds", rank: 12, faceUp: true }, { id: "3", suit: "clubs", rank: 11, faceUp: true }, { id: "4", suit: "spades", rank: 13, faceUp: true }],
         [{ id: "5", suit: "hearts", rank: 11, faceUp: true }, { id: "6", suit: "diamonds", rank: 5, faceUp: true }, { id: "7", suit: "clubs", rank: 6, faceUp: true }, { id: "8", suit: "spades", rank: 11, faceUp: true }],
         [{ id: "9", suit: "hearts", rank: 11, faceUp: true }, { id: "10", suit: "diamonds", rank: 7, faceUp: true }, { id: "11", suit: "clubs", rank: 8, faceUp: true }, { id: "12", suit: "spades", rank: 11, faceUp: true }],
@@ -155,7 +155,7 @@ describe("Validation", () => {
     });
 
     it("should return false when grid has empty spots", () => {
-      const grid: Card[][] = [
+      const grid: (Card | null)[][] = [
         [{ id: "1", suit: "hearts", rank: 13, faceUp: true }, null, null, null],
         [null, null, null, null],
         [null, null, null, null],
@@ -167,7 +167,7 @@ describe("Validation", () => {
 
   describe("clearGrid", () => {
     it("should clear all cards from grid", () => {
-      const grid: Card[][] = [
+      const grid: (Card | null)[][] = [
         [{ id: "1", suit: "hearts", rank: 13, faceUp: true }, { id: "2", suit: "diamonds", rank: 12, faceUp: true }],
         [{ id: "3", suit: "clubs", rank: 11, faceUp: true }, { id: "4", suit: "spades", rank: 5, faceUp: true }],
       ];
@@ -182,7 +182,7 @@ describe("Validation", () => {
 
   describe("findPairsAddingTo10", () => {
     it("should find pairs adding to 10", () => {
-      const grid: Card[][] = Array(4).fill(null).map(() => Array(4).fill(null));
+      const grid: (Card | null)[][] = Array(4).fill(null).map(() => Array(4).fill(null));
       grid[0][0] = { id: "1", suit: "hearts", rank: 3, faceUp: true };
       grid[0][1] = { id: "2", suit: "diamonds", rank: 5, faceUp: true };
       grid[1][0] = { id: "3", suit: "clubs", rank: 7, faceUp: true };
@@ -193,7 +193,7 @@ describe("Validation", () => {
     });
 
     it("should find single 10s", () => {
-      const grid: Card[][] = Array(4).fill(null).map(() => Array(4).fill(null));
+      const grid: (Card | null)[][] = Array(4).fill(null).map(() => Array(4).fill(null));
       grid[0][0] = { id: "1", suit: "hearts", rank: 10, faceUp: true };
       grid[0][1] = { id: "2", suit: "diamonds", rank: 5, faceUp: true };
       grid[1][0] = { id: "3", suit: "clubs", rank: 7, faceUp: true };
