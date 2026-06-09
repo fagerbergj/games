@@ -11,6 +11,7 @@ describe("Validation", () => {
         discardPile: [],
         currentTurn: 0,
         phase: "playing",
+        cheatCount: 0,
         grid: Array(4).fill(null).map(() => Array(4).fill(null)),
       };
       const card: Card = { id: "1", suit: "hearts", rank: 13, faceUp: true };
@@ -29,6 +30,7 @@ describe("Validation", () => {
         discardPile: [],
         currentTurn: 0,
         phase: "playing",
+        cheatCount: 0,
         grid: Array(4).fill(null).map(() => Array(4).fill(null)),
       };
       const card: Card = { id: "1", suit: "hearts", rank: 13, faceUp: true };
@@ -45,6 +47,7 @@ describe("Validation", () => {
         discardPile: [],
         currentTurn: 0,
         phase: "playing",
+        cheatCount: 0,
         grid: Array(4).fill(null).map(() => Array(4).fill(null)),
       };
       const card: Card = { id: "1", suit: "hearts", rank: 12, faceUp: true };
@@ -63,6 +66,7 @@ describe("Validation", () => {
         discardPile: [],
         currentTurn: 0,
         phase: "playing",
+        cheatCount: 0,
         grid: Array(4).fill(null).map(() => Array(4).fill(null)),
       };
       const card: Card = { id: "1", suit: "hearts", rank: 12, faceUp: true };
@@ -79,6 +83,7 @@ describe("Validation", () => {
         discardPile: [],
         currentTurn: 0,
         phase: "playing",
+        cheatCount: 0,
         grid: Array(4).fill(null).map(() => Array(4).fill(null)),
       };
       const card: Card = { id: "1", suit: "hearts", rank: 11, faceUp: true };
@@ -97,6 +102,7 @@ describe("Validation", () => {
         discardPile: [],
         currentTurn: 0,
         phase: "playing",
+        cheatCount: 0,
         grid: Array(4).fill(null).map(() => Array(4).fill(null)),
       };
       const card: Card = { id: "1", suit: "hearts", rank: 11, faceUp: true };
@@ -112,6 +118,7 @@ describe("Validation", () => {
         discardPile: [],
         currentTurn: 0,
         phase: "playing",
+        cheatCount: 0,
         grid: Array(4).fill(null).map(() => Array(4).fill(null)),
       };
       const card: Card = { id: "1", suit: "hearts", rank: 5, faceUp: true };
@@ -130,6 +137,7 @@ describe("Validation", () => {
         discardPile: [],
         currentTurn: 0,
         phase: "playing",
+        cheatCount: 0,
         grid: [
           [{ id: "1", suit: "hearts", rank: 13, faceUp: true }, null, null, null],
           [null, null, null, null],

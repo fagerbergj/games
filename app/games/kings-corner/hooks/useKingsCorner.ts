@@ -26,6 +26,7 @@ export function useKingsCorner() {
       deck,
       discardPile: [],
       currentTurn: 0,
+      cheatCount: 0,
       phase: firstCard && !canPlaceAnywhere(firstCard, initialGrid) ? "gameover" : "playing",
       grid: initialGrid,
       drawnCard: firstCard,
@@ -74,7 +75,7 @@ export function useKingsCorner() {
       ]);
       const nextCard = drawCard(newDeck);
       const phase = !nextCard || !canPlaceAnywhere(nextCard, prev.grid) ? "gameover" : "playing";
-      return { ...prev, deck: newDeck, discardPile: [], drawnCard: nextCard ?? undefined, cheated: true, phase };
+      return { ...prev, deck: newDeck, discardPile: [], drawnCard: nextCard ?? undefined, cheatCount: prev.cheatCount + 1, phase };
     });
   }, []);
 

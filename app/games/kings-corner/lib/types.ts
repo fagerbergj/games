@@ -22,7 +22,7 @@ export interface GameState {
   grid: (Card | null)[][];
   drawnCard?: Card;
   winner?: string;
-  cheated?: boolean;
+  cheatCount: number;
 }
 
 export interface KingsCornerRules {

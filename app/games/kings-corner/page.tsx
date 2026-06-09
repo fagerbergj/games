@@ -126,14 +126,16 @@ export default function GamePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl p-10 text-center max-w-sm w-full mx-4">
             <h2 className="text-3xl font-bold text-white mb-3">
-              {gameState.cheated
+              {gameState.cheatCount > 0
                 ? "Cheater and Still Lost!"
                 : gameState.deck.length === 0
                   ? "Out of Cards!"
                   : "No Moves Available!"}
             </h2>
             <p className="text-zinc-400 mb-8">
-              {gameState.cheated ? "Shame on you." : "Better luck next time!"}
+              {gameState.cheatCount > 0
+                ? `Cheated ${gameState.cheatCount} time${gameState.cheatCount === 1 ? "" : "s"} and still couldn't win.`
+                : "Better luck next time!"}
             </p>
             <div className="flex flex-col gap-3">
               <button
@@ -156,10 +158,12 @@ export default function GamePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl p-10 text-center max-w-sm w-full mx-4">
             <h2 className="text-3xl font-bold text-yellow-400 mb-3">
-              {gameState.cheated ? "You Won... by Cheating 🤨" : "You Won!"}
+              {gameState.cheatCount > 0 ? "You Won... by Cheating 🤨" : "You Won!"}
             </h2>
             <p className="text-zinc-400 mb-8">
-              {gameState.cheated ? "Does it even count?" : "All cards cleared!"}
+              {gameState.cheatCount > 0
+                ? `Cheated ${gameState.cheatCount} time${gameState.cheatCount === 1 ? "" : "s"}. Does it even count?`
+                : "All cards cleared!"}
             </p>
             <button
               onClick={handleReset}
@@ -200,6 +204,11 @@ export default function GamePage() {
             >
               Discard: <span className="font-bold text-white">{gameState.discardPile.length}</span>
             </button>
+            {gameState.cheatCount > 0 && (
+              <span className="bg-red-900/60 text-red-300 text-sm px-3 py-1 rounded-full">
+                Cheats: <span className="font-bold">{gameState.cheatCount}</span>
+              </span>
+            )}
             {expandedPile && (
               <div className="absolute top-full mt-2 z-20 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden min-w-[140px]">
                 <div className="px-4 py-2 bg-zinc-800 border-b border-zinc-700 text-left">
