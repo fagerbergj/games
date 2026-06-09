@@ -14,6 +14,7 @@ export default function GamePage() {
     playCard,
     resetGame,
     resumePlaying,
+    cheat,
   } = useKingsCorner();
 
   const [selectedDiscardCard, setSelectedDiscardCard] = useState<{ row: number; col: number } | null>(null);
@@ -118,15 +119,29 @@ export default function GamePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl p-10 text-center max-w-sm w-full mx-4">
             <h2 className="text-3xl font-bold text-white mb-3">
-              {gameState.deck.length === 0 ? "Out of Cards!" : "No Moves Available!"}
+              {gameState.cheated
+                ? "Cheater and Still Lost!"
+                : gameState.deck.length === 0
+                  ? "Out of Cards!"
+                  : "No Moves Available!"}
             </h2>
-            <p className="text-zinc-400 mb-8">Better luck next time!</p>
-            <button
-              onClick={handleReset}
-              className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-3 px-8 rounded-lg text-lg transition-colors"
-            >
-              Play Again
-            </button>
+            <p className="text-zinc-400 mb-8">
+              {gameState.cheated ? "Shame on you." : "Better luck next time!"}
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleReset}
+                className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-3 px-8 rounded-lg text-lg transition-colors"
+              >
+                New Game
+              </button>
+              <button
+                onClick={cheat}
+                className="bg-red-900 hover:bg-red-800 text-red-300 font-bold py-3 px-8 rounded-lg text-lg transition-colors"
+              >
+                {gameState.cheated ? "Cheat Again" : "I'm a Cheater"}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { createDeck, drawCard } from "../lib/deck";
+import { createDeck, drawCard, shuffle } from "../lib/deck";
 import { isValidGridPosition } from "../lib/validation";
 import { GameState, Card } from "../lib/types";
 
@@ -17,7 +17,7 @@ export function useKingsCorner() {
 
   const initializeGame = useCallback(() => {
     const deck = createDeck();
-    const initialGrid: Card[][] = Array(4).fill(null).map(() => Array(4).fill(null));
+    const initialGrid: (Card | null)[][] = Array(4).fill(null).map(() => Array(4).fill(null));
     const firstCard = drawCard(deck);
 
     setGameState({
@@ -64,6 +64,18 @@ export function useKingsCorner() {
     setGameState(null);
   }, []);
 
+  const cheat = useCallback(() => {
+    setGameState((prev) => {
+      if (!prev) return null;
+      const gridCards = prev.grid.flat().filter((c): c is Card => c !== null);
+      const newDeck = shuffle([...prev.deck, ...prev.discardPile, ...gridCards]);
+      const newGrid: (Card | null)[][] = Array(4).fill(null).map(() => Array(4).fill(null));
+      const nextCard = drawCard(newDeck);
+      const phase = !nextCard || !canPlaceAnywhere(nextCard, newGrid) ? "gameover" : "playing";
+      return { ...prev, deck: newDeck, discardPile: [], grid: newGrid, drawnCard: nextCard ?? undefined, cheated: true, phase };
+    });
+  }, []);
+
   const resumePlaying = useCallback(() => {
     setGameState((prev) => {
       if (!prev) return null;
@@ -83,5 +95,6 @@ export function useKingsCorner() {
     playCard,
     resetGame,
     resumePlaying,
+    cheat,
   };
 }
