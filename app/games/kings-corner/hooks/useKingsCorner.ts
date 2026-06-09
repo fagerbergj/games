@@ -83,8 +83,12 @@ export function useKingsCorner() {
       if (!prev) return null;
       const newDeck = [...prev.deck];
       const nextCard = drawCard(newDeck);
-      if (!nextCard || !canPlaceAnywhere(nextCard, prev.grid)) {
-        return { ...prev, deck: newDeck, drawnCard: nextCard ?? undefined, phase: "gameover" };
+      if (!nextCard) {
+        const gridEmpty = prev.grid.every((r) => r.every((c) => c === null));
+        return { ...prev, deck: newDeck, drawnCard: undefined, phase: gridEmpty ? "won" : "gameover" };
+      }
+      if (!canPlaceAnywhere(nextCard, prev.grid)) {
+        return { ...prev, deck: newDeck, drawnCard: nextCard, phase: "gameover" };
       }
       return { ...prev, deck: newDeck, drawnCard: nextCard, phase: "playing" };
     });

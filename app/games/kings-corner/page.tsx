@@ -69,7 +69,9 @@ export default function GamePage() {
       newGrid[row][col] = null;
       setGameState((prev) => {
         if (!prev) return null;
-        return { ...prev, grid: newGrid, discardPile: [...prev.discardPile, cell] };
+        const gridEmpty = newGrid.every((r) => r.every((c) => c === null));
+        const phase = gridEmpty && prev.deck.length === 0 ? "won" : prev.phase;
+        return { ...prev, grid: newGrid, discardPile: [...prev.discardPile, cell], phase };
       });
       setSelectedDiscardCard(null);
       setHighlightedDiscardCards([]);
@@ -83,7 +85,12 @@ export default function GamePage() {
           const newGrid = gameState.grid.map((r) => [...r]);
           newGrid[selectedDiscardCard.row][selectedDiscardCard.col] = null;
           newGrid[row][col] = null;
-          setGameState((prev) => prev ? { ...prev, grid: newGrid, discardPile: [...prev.discardPile, selectedCell, cell] } : null);
+          setGameState((prev) => {
+            if (!prev) return null;
+            const gridEmpty = newGrid.every((r) => r.every((c) => c === null));
+            const phase = gridEmpty && prev.deck.length === 0 ? "won" : prev.phase;
+            return { ...prev, grid: newGrid, discardPile: [...prev.discardPile, selectedCell, cell], phase };
+          });
           setSelectedDiscardCard(null);
           setHighlightedDiscardCards([]);
         } else {
@@ -142,6 +149,24 @@ export default function GamePage() {
                 Cheat
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {gameState.phase === "won" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl p-10 text-center max-w-sm w-full mx-4">
+            <h2 className="text-3xl font-bold text-yellow-400 mb-3">
+              {gameState.cheated ? "You Won... by Cheating 🤨" : "You Won!"}
+            </h2>
+            <p className="text-zinc-400 mb-8">
+              {gameState.cheated ? "Does it even count?" : "All cards cleared!"}
+            </p>
+            <button
+              onClick={handleReset}
+              className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-3 px-8 rounded-lg text-lg transition-colors w-full"
+            >
+              Play Again
+            </button>
           </div>
         </div>
       )}
