@@ -68,10 +68,11 @@ export default function GamePage() {
 
     if (cell.rank === 10) {
       const newGrid = gameState.grid.map((r) => [...r]);
+      const discarded = newGrid[row][col]!;
       newGrid[row][col] = null;
       setGameState((prev) => {
         if (!prev) return null;
-        return { ...prev, grid: newGrid };
+        return { ...prev, grid: newGrid, discardPile: [...prev.discardPile, discarded] };
       });
       setSelectedDiscardCard(null);
       setHighlightedDiscardCards([]);
@@ -83,9 +84,11 @@ export default function GamePage() {
         const selectedCell = gameState.grid[selectedDiscardCard.row][selectedDiscardCard.col];
         if (selectedCell && selectedCell.rank + cell.rank === 10) {
           const newGrid = gameState.grid.map((r) => [...r]);
+          const discarded1 = newGrid[selectedDiscardCard.row][selectedDiscardCard.col]!;
+          const discarded2 = newGrid[row][col]!;
           newGrid[selectedDiscardCard.row][selectedDiscardCard.col] = null;
           newGrid[row][col] = null;
-          setGameState((prev) => prev ? { ...prev, grid: newGrid } : null);
+          setGameState((prev) => prev ? { ...prev, grid: newGrid, discardPile: [...prev.discardPile, discarded1, discarded2] } : null);
           setSelectedDiscardCard(null);
           setHighlightedDiscardCards([]);
         } else {
@@ -170,7 +173,14 @@ export default function GamePage() {
       <main className="flex-1 max-w-7xl mx-auto w-full p-4">
         <div className="text-center mb-6">
           <p className="text-xl text-zinc-300 mb-2">{playerName}'s Turn</p>
-          <p className="text-zinc-500">{gameState?.deck.length} cards remaining</p>
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <span className="bg-zinc-800 text-zinc-400 text-sm px-3 py-1 rounded-full">
+              Deck: <span className="font-bold text-white">{gameState?.deck.length ?? 0}</span>
+            </span>
+            <span className="bg-zinc-800 text-zinc-400 text-sm px-3 py-1 rounded-full">
+              Discard: <span className="font-bold text-white">{gameState?.discardPile.length ?? 0}</span>
+            </span>
+          </div>
           {gameState?.phase === "cleared-grid" && (
             <p className="text-green-400 font-bold mt-2">
               {selectedDiscardCard ? "Click to discard" : "Click a card to discard (10s auto, others need pair)"}
