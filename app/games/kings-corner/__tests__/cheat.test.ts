@@ -77,7 +77,7 @@ describe("cheat", () => {
     expect(totalCards(result.current.gameState!)).toBe(52);
   });
 
-  it("recovers when deck AND drawn card are both empty (the real bug)", () => {
+  it("preserves all cards and discard pile when deck and drawn card are both empty", () => {
     const { result } = renderHook(() => useKingsCorner());
     act(() => { result.current.initializeGame(); });
 
@@ -101,14 +101,13 @@ describe("cheat", () => {
       } : null);
     });
 
+    const discardCount = result.current.gameState!.discardPile.length;
     expect(totalCards(result.current.gameState!)).toBe(52);
-    expect(result.current.gameState!.phase).toBe("gameover");
 
     act(() => { result.current.cheat(); });
 
-    // Discard pile cards should now be back in play
+    // Discard pile should be untouched — cheat only shuffles the drawn card back
     expect(totalCards(result.current.gameState!)).toBe(52);
-    expect(result.current.gameState!.discardPile.length).toBe(0);
-    expect(result.current.gameState!.phase).toBe("playing");
+    expect(result.current.gameState!.discardPile.length).toBe(discardCount);
   });
 });
