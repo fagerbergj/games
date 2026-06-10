@@ -20,8 +20,10 @@ export default function GamePage() {
   const [selectedDiscardCard, setSelectedDiscardCard] = useState<{ row: number; col: number } | null>(null);
   const [highlightedDiscardCards, setHighlightedDiscardCards] = useState<{ row: number; col: number }[]>([]);
   const [expandedPile, setExpandedPile] = useState<"deck" | "discard" | null>(null);
+  const [hintPinned, setHintPinned] = useState(false);
 
   useEffect(() => { initializeGame(); }, []);
+  useEffect(() => { setHintPinned(false); }, [gameState?.drawnCard?.id]);
 
   const handleReset = () => {
     initializeGame();
@@ -292,7 +294,21 @@ export default function GamePage() {
           {gameState?.drawnCard && (
             <div className="flex flex-col items-center gap-2">
               <p className="text-zinc-400 text-sm">Click a grid cell to place this card</p>
-              <CardComponent card={gameState.drawnCard} faceUp={true} />
+              <div className="relative group">
+                <CardComponent card={gameState.drawnCard} faceUp={true} />
+                <button
+                  onClick={() => setHintPinned(p => !p)}
+                  className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-zinc-700 hover:bg-zinc-500 text-zinc-300 text-xs flex items-center justify-center leading-none"
+                  title="Placement hint"
+                >
+                  ?
+                </button>
+                <div className={hintPinned ? "block" : "hidden group-hover:block"}>
+                  <div className="absolute top-0 left-full ml-2 z-10">
+                    <CardPlacementHint card={gameState.drawnCard} gameState={gameState} />
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -342,6 +358,77 @@ function getGridPositionLabel(row: number, col: number): string {
   if (isTopEdge || isBottomEdge) return "Queens";
   if (isLeftEdge || isRightEdge) return "Jacks";
   return "Any";
+}
+
+function getPositionLabel(row: number, col: number): string {
+  const isCorner = (row === 0 || row === 3) && (col === 0 || col === 3);
+  if (isCorner) return "K";
+  if ((row === 0 || row === 3) && col > 0 && col < 3) return "Q";
+  if ((col === 0 || col === 3) && row > 0 && row < 3) return "J";
+  return "M";
+}
+
+function getRankCounts(rank: number, gameState: import("./lib/types").GameState): { boardPositions: string[]; discard: number; deck: number } {
+  const boardPositions: string[] = [];
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 4; c++) {
+      if (gameState.grid[r][c]?.rank === rank) boardPositions.push(getPositionLabel(r, c));
+    }
+  }
+  const discard = gameState.discardPile.filter(c => c.rank === rank).length;
+  const isDrawn = gameState.drawnCard?.rank === rank ? 1 : 0;
+  return { boardPositions, discard, deck: 4 - boardPositions.length - discard - isDrawn };
+}
+
+function getPairRank(rank: number): number | null {
+  if (rank >= 1 && rank <= 9) return 10 - rank;
+  return null;
+}
+
+function CardPlacementHint({ card, gameState }: { card: import("./lib/types").Card; gameState: import("./lib/types").GameState }) {
+  const mine = getRankCounts(card.rank, gameState);
+  const pairRank = getPairRank(card.rank);
+  const pair = pairRank !== null ? getRankCounts(pairRank, gameState) : null;
+  const mySymbol = getCardSymbol(card.rank);
+  const pairSymbol = pairRank !== null ? getCardSymbol(pairRank) : null;
+
+  const BoardCell = ({ positions }: { positions: string[] }) => (
+    <td className="py-1 px-3 text-center text-sm font-bold text-white">
+      {positions.length === 0 ? "—" : positions.join(" ")}
+    </td>
+  );
+
+  return (
+    <div className="bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2 text-xs shadow-xl min-w-[160px]">
+      <table className="w-full">
+        <thead>
+          <tr>
+            <th className="pb-1 text-left text-zinc-500 font-normal"></th>
+            <th className="pb-1 px-3 text-center text-zinc-300 font-bold">{mySymbol}</th>
+            {pairSymbol && <th className="pb-1 px-3 text-center text-zinc-400 font-normal">pair ({pairSymbol})</th>}
+          </tr>
+        </thead>
+        <tbody>
+          <tr className="border-t border-zinc-700">
+            <td className="py-1 pr-3 text-zinc-500">Board</td>
+            <BoardCell positions={mine.boardPositions} />
+            {pair && <BoardCell positions={pair.boardPositions} />}
+          </tr>
+          <tr className="border-t border-zinc-700">
+            <td className="py-1 pr-3 text-zinc-500">Discard</td>
+            <td className="py-1 px-3 text-center text-sm font-bold text-white">{mine.discard || "—"}</td>
+            {pair && <td className="py-1 px-3 text-center text-sm font-bold text-white">{pair.discard || "—"}</td>}
+          </tr>
+          <tr className="border-t border-zinc-700">
+            <td className="py-1 pr-3 text-zinc-500">Deck</td>
+            <td className="py-1 px-3 text-center text-sm font-bold text-white">{mine.deck}</td>
+            {pair && <td className="py-1 px-3 text-center text-sm font-bold text-white">{pair.deck}</td>}
+          </tr>
+        </tbody>
+      </table>
+      {card.rank === 10 && <p className="text-zinc-500 text-center mt-1">self-clearing</p>}
+    </div>
+  );
 }
 
 function getCardCounts(cards: import("./lib/types").Card[]): { rank: number; symbol: string; count: number }[] {
