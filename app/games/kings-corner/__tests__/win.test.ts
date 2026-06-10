@@ -24,6 +24,33 @@ describe("win condition", () => {
     expect(result.current.gameState!.phase).toBe("won");
   });
 
+  it("transitions to cleared-grid (not gameover) when deck empties mid-placement", () => {
+    const { result } = renderHook(() => useKingsCorner());
+    act(() => { result.current.initializeGame(); });
+
+    const card7 = { id: "c7", suit: "hearts" as const, rank: 7, faceUp: true };
+    const card3 = { id: "c3", suit: "clubs" as const, rank: 3, faceUp: true };
+    const grid = Array(4).fill(null).map(() => Array(4).fill(null));
+    grid[1][2] = card3; // center spot occupied
+
+    act(() => {
+      result.current.setGameState((prev) => prev ? {
+        ...prev,
+        phase: "playing",
+        deck: [],
+        discardPile: [],
+        drawnCard: card7,
+        grid,
+      } : null);
+    });
+
+    // Place 7 in center [1][1] — deck is empty so should go to cleared-grid, not gameover
+    act(() => { result.current.playCard(1, 1); });
+
+    expect(result.current.gameState!.phase).toBe("cleared-grid");
+    expect(result.current.gameState!.deck.length).toBe(0);
+  });
+
   it("fires 'gameover' via resumePlaying when deck is empty but grid still has cards", () => {
     const { result } = renderHook(() => useKingsCorner());
     act(() => { result.current.initializeGame(); });

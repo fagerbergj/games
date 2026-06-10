@@ -51,8 +51,13 @@ export function useKingsCorner() {
       const newDeck = [...gameState.deck];
       const nextCard = drawCard(newDeck);
 
-      if (!nextCard || !canPlaceAnywhere(nextCard, newGrid)) {
-        setGameState((prev) => prev ? { ...prev, grid: newGrid, deck: newDeck, drawnCard: nextCard ?? undefined, phase: "gameover" } : null);
+      if (!nextCard) {
+        setGameState((prev) => prev ? { ...prev, grid: newGrid, deck: newDeck, drawnCard: undefined, phase: "cleared-grid" } : null);
+        return;
+      }
+
+      if (!canPlaceAnywhere(nextCard, newGrid)) {
+        setGameState((prev) => prev ? { ...prev, grid: newGrid, deck: newDeck, drawnCard: nextCard, phase: "gameover" } : null);
         return;
       }
 
