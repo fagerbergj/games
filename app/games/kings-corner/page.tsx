@@ -71,9 +71,7 @@ export default function GamePage() {
       newGrid[row][col] = null;
       setGameState((prev) => {
         if (!prev) return null;
-        const gridEmpty = newGrid.every((r) => r.every((c) => c === null));
-        const phase = gridEmpty && prev.deck.length === 0 ? "won" : prev.phase;
-        return { ...prev, grid: newGrid, discardPile: [...prev.discardPile, cell], phase };
+        return { ...prev, grid: newGrid, discardPile: [...prev.discardPile, cell] };
       });
       setSelectedDiscardCard(null);
       setHighlightedDiscardCards([]);
@@ -89,9 +87,7 @@ export default function GamePage() {
           newGrid[row][col] = null;
           setGameState((prev) => {
             if (!prev) return null;
-            const gridEmpty = newGrid.every((r) => r.every((c) => c === null));
-            const phase = gridEmpty && prev.deck.length === 0 ? "won" : prev.phase;
-            return { ...prev, grid: newGrid, discardPile: [...prev.discardPile, selectedCell, cell], phase };
+            return { ...prev, grid: newGrid, discardPile: [...prev.discardPile, selectedCell, cell] };
           });
           setSelectedDiscardCard(null);
           setHighlightedDiscardCards([]);
@@ -165,7 +161,7 @@ export default function GamePage() {
             <p className="text-zinc-400 mb-8">
               {gameState.cheatCount > 0
                 ? `Cheated ${gameState.cheatCount} time${gameState.cheatCount === 1 ? "" : "s"}. Does it even count?`
-                : "All cards cleared!"}
+                : "Every edge filled with royalty!"}
             </p>
             <button
               onClick={handleReset}

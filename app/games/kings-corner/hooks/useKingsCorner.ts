@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { createDeck, drawCard, shuffle } from "../lib/deck";
-import { isValidGridPosition } from "../lib/validation";
+import { isValidGridPosition, areEdgesComplete } from "../lib/validation";
 import { GameState, Card } from "../lib/types";
 
 function canPlaceAnywhere(card: Card, grid: (Card | null)[][]): boolean {
@@ -41,6 +41,11 @@ export function useKingsCorner() {
 
       const newGrid = gameState.grid.map((r) => [...r]);
       newGrid[row][col] = card;
+
+      if (areEdgesComplete(newGrid)) {
+        setGameState((prev) => prev ? { ...prev, grid: newGrid, drawnCard: undefined, phase: "won" } : null);
+        return;
+      }
 
       const gridFull = newGrid.every((r) => r.every((cell) => cell !== null));
       if (gridFull) {
@@ -89,8 +94,7 @@ export function useKingsCorner() {
       const newDeck = [...prev.deck];
       const nextCard = drawCard(newDeck);
       if (!nextCard) {
-        const gridEmpty = prev.grid.every((r) => r.every((c) => c === null));
-        return { ...prev, deck: newDeck, drawnCard: undefined, phase: gridEmpty ? "won" : "gameover" };
+        return { ...prev, deck: newDeck, drawnCard: undefined, phase: "gameover" };
       }
       if (!canPlaceAnywhere(nextCard, prev.grid)) {
         return { ...prev, deck: newDeck, drawnCard: nextCard, phase: "gameover" };
