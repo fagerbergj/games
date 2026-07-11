@@ -1,0 +1,166 @@
+0 verbose cli /home/jason/.nvm/versions/node/v22.22.3/bin/node /home/jason/.nvm/versions/node/v20.20.1/bin/npm
+1 info using npm@10.8.2
+2 info using node@v22.22.3
+3 silly config load:file:/home/jason/.nvm/versions/node/v20.20.1/lib/node_modules/npm/npmrc
+4 silly config load:file:/tmp/claude-1000/-home-jason-workspace-agent-researcher/d7b209b4-2a3f-421a-b0b9-a9db55bf40a2/scratchpad/workspace/local/games/.npmrc
+5 silly config load:file:/home/jason/.nvm/versions/node/v22.22.3/etc/npmrc
+6 verbose title npm add @vitest/coverage-v8
+7 verbose argv "add" "--save-dev" "@vitest/coverage-v8"
+8 verbose logfile logs-max:10 dir:/tmp/claude-1000/-home-jason-workspace-agent-researcher/d7b209b4-2a3f-421a-b0b9-a9db55bf40a2/scratchpad/workspace/local/games/.npm/_logs/2026-07-11T11_16_13_633Z-
+9 verbose logfile /tmp/claude-1000/-home-jason-workspace-agent-researcher/d7b209b4-2a3f-421a-b0b9-a9db55bf40a2/scratchpad/workspace/local/games/.npm/_logs/2026-07-11T11_16_13_633Z-debug-0.log
+10 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+11 silly logfile done cleaning log files
+12 silly idealTree buildDeps
+13 silly fetch manifest @vitest/coverage-v8@*
+14 silly packumentCache full:https://registry.npmjs.org/@vitest%2fcoverage-v8 cache-miss
+15 http fetch GET 200 https://registry.npmjs.org/@vitest%2fcoverage-v8 359ms (cache miss)
+16 silly packumentCache full:https://registry.npmjs.org/@vitest%2fcoverage-v8 set size:undefined disposed:false
+17 silly fetch manifest @vitest/browser@4.1.10
+18 silly packumentCache full:https://registry.npmjs.org/@vitest%2fbrowser cache-miss
+19 http fetch GET 200 https://registry.npmjs.org/@vitest%2fbrowser 143ms (cache miss)
+20 silly packumentCache full:https://registry.npmjs.org/@vitest%2fbrowser set size:undefined disposed:false
+21 silly fetch manifest vitest@^2.1.8
+22 silly packumentCache full:https://registry.npmjs.org/vitest cache-miss
+23 http fetch GET 200 https://registry.npmjs.org/vitest 177ms (cache miss)
+24 silly packumentCache full:https://registry.npmjs.org/vitest set size:undefined disposed:false
+25 silly fetch manifest vitest@4.1.10
+26 silly packumentCache full:https://registry.npmjs.org/vitest cache-miss
+27 http fetch GET 200 https://registry.npmjs.org/vitest 40ms (cache hit)
+28 silly packumentCache full:https://registry.npmjs.org/vitest set size:2218669 disposed:false
+29 silly fetch manifest @edge-runtime/vm@*
+30 silly packumentCache full:https://registry.npmjs.org/@edge-runtime%2fvm cache-miss
+31 http fetch GET 200 https://registry.npmjs.org/@edge-runtime%2fvm 224ms (cache miss)
+32 silly packumentCache full:https://registry.npmjs.org/@edge-runtime%2fvm set size:undefined disposed:false
+33 silly fetch manifest @types/node@^20
+34 silly packumentCache full:https://registry.npmjs.org/@types%2fnode cache-miss
+35 http fetch GET 200 https://registry.npmjs.org/@types%2fnode 402ms (cache miss)
+36 silly packumentCache full:https://registry.npmjs.org/@types%2fnode set size:undefined disposed:false
+37 silly fetch manifest @vitest/browser@2.1.9
+38 silly packumentCache full:https://registry.npmjs.org/@vitest%2fbrowser cache-miss
+39 http fetch GET 200 https://registry.npmjs.org/@vitest%2fbrowser 4ms (cache hit)
+40 silly packumentCache full:https://registry.npmjs.org/@vitest%2fbrowser set size:783009 disposed:false
+41 silly fetch manifest playwright@*
+42 silly packumentCache full:https://registry.npmjs.org/playwright cache-miss
+43 http fetch GET 200 https://registry.npmjs.org/playwright 559ms (cache miss)
+44 silly packumentCache full:https://registry.npmjs.org/playwright set size:undefined disposed:false
+45 silly fetch manifest vitest@2.1.9
+46 silly packumentCache full:https://registry.npmjs.org/vitest cache-miss
+47 http fetch GET 200 https://registry.npmjs.org/vitest 6ms (cache hit)
+48 silly packumentCache full:https://registry.npmjs.org/vitest set size:2218669 disposed:false
+49 silly fetch manifest @types/node@^18.0.0 || >=20.0.0
+50 silly packumentCache full:https://registry.npmjs.org/@types%2fnode cache-miss
+51 http fetch GET 200 https://registry.npmjs.org/@types%2fnode 22ms (cache hit)
+52 silly packumentCache full:https://registry.npmjs.org/@types%2fnode set size:11080817 disposed:false
+53 silly fetch manifest @vitest/ui@2.1.9
+54 silly packumentCache full:https://registry.npmjs.org/@vitest%2fui cache-miss
+55 http fetch GET 200 https://registry.npmjs.org/@vitest%2fui 401ms (cache miss)
+56 silly packumentCache full:https://registry.npmjs.org/@vitest%2fui set size:undefined disposed:false
+57 silly fetch manifest happy-dom@*
+58 silly packumentCache full:https://registry.npmjs.org/happy-dom cache-miss
+59 http fetch GET 200 https://registry.npmjs.org/happy-dom 201ms (cache miss)
+60 silly packumentCache full:https://registry.npmjs.org/happy-dom set size:undefined disposed:false
+61 silly fetch manifest jsdom@*
+62 silly packumentCache full:https://registry.npmjs.org/jsdom cache-miss
+63 http fetch GET 200 https://registry.npmjs.org/jsdom 134ms (cache miss)
+64 silly packumentCache full:https://registry.npmjs.org/jsdom set size:undefined disposed:false
+65 silly fetch manifest canvas@^3.0.0
+66 silly packumentCache full:https://registry.npmjs.org/canvas cache-miss
+67 http fetch GET 200 https://registry.npmjs.org/canvas 139ms (cache miss)
+68 silly packumentCache full:https://registry.npmjs.org/canvas set size:undefined disposed:false
+69 silly fetch manifest webdriverio@*
+70 silly packumentCache full:https://registry.npmjs.org/webdriverio cache-miss
+71 http fetch GET 200 https://registry.npmjs.org/webdriverio 332ms (cache miss)
+72 silly packumentCache full:https://registry.npmjs.org/webdriverio set size:undefined disposed:false
+73 silly fetch manifest puppeteer-core@>=22.x || <=24.x
+74 silly packumentCache full:https://registry.npmjs.org/puppeteer-core cache-miss
+75 http fetch GET 200 https://registry.npmjs.org/puppeteer-core 207ms (cache miss)
+76 silly packumentCache full:https://registry.npmjs.org/puppeteer-core set size:undefined disposed:false
+77 silly fetch manifest @vitest/ui@^2.1.8
+78 silly packumentCache full:https://registry.npmjs.org/@vitest%2fui cache-miss
+79 http fetch GET 200 https://registry.npmjs.org/@vitest%2fui 16ms (cache hit)
+80 silly packumentCache full:https://registry.npmjs.org/@vitest%2fui set size:1272013 disposed:false
+81 silly fetch manifest jsdom@^25.0.1
+82 silly packumentCache full:https://registry.npmjs.org/jsdom cache-miss
+83 http fetch GET 200 https://registry.npmjs.org/jsdom 18ms (cache hit)
+84 silly packumentCache full:https://registry.npmjs.org/jsdom set size:1064917 disposed:false
+85 silly fetch manifest canvas@^2.11.2
+86 silly packumentCache full:https://registry.npmjs.org/canvas cache-miss
+87 http fetch GET 200 https://registry.npmjs.org/canvas 10ms (cache hit)
+88 silly packumentCache full:https://registry.npmjs.org/canvas set size:372046 disposed:false
+89 silly fetch manifest @opentelemetry/api@^1.9.0
+90 silly packumentCache full:https://registry.npmjs.org/@opentelemetry%2fapi cache-miss
+91 http fetch GET 200 https://registry.npmjs.org/@opentelemetry%2fapi 130ms (cache miss)
+92 silly packumentCache full:https://registry.npmjs.org/@opentelemetry%2fapi set size:undefined disposed:false
+93 silly fetch manifest @types/node@^20.0.0 || ^22.0.0 || >=24.0.0
+94 silly packumentCache full:https://registry.npmjs.org/@types%2fnode cache-miss
+95 http fetch GET 200 https://registry.npmjs.org/@types%2fnode 79ms (cache hit)
+96 silly packumentCache full:https://registry.npmjs.org/@types%2fnode set size:11080817 disposed:false
+97 silly fetch manifest @vitest/browser-playwright@4.1.10
+98 silly packumentCache full:https://registry.npmjs.org/@vitest%2fbrowser-playwright cache-miss
+99 http fetch GET 200 https://registry.npmjs.org/@vitest%2fbrowser-playwright 44ms (cache miss)
+100 silly packumentCache full:https://registry.npmjs.org/@vitest%2fbrowser-playwright set size:undefined disposed:false
+101 silly fetch manifest @vitest/browser-preview@4.1.10
+102 silly packumentCache full:https://registry.npmjs.org/@vitest%2fbrowser-preview cache-miss
+103 http fetch GET 200 https://registry.npmjs.org/@vitest%2fbrowser-preview 167ms (cache miss)
+104 silly packumentCache full:https://registry.npmjs.org/@vitest%2fbrowser-preview set size:undefined disposed:false
+105 silly fetch manifest @vitest/browser-webdriverio@4.1.10
+106 silly packumentCache full:https://registry.npmjs.org/@vitest%2fbrowser-webdriverio cache-miss
+107 http fetch GET 200 https://registry.npmjs.org/@vitest%2fbrowser-webdriverio 103ms (cache miss)
+108 silly packumentCache full:https://registry.npmjs.org/@vitest%2fbrowser-webdriverio set size:undefined disposed:false
+109 silly fetch manifest @vitest/coverage-istanbul@4.1.10
+110 silly packumentCache full:https://registry.npmjs.org/@vitest%2fcoverage-istanbul cache-miss
+111 http fetch GET 200 https://registry.npmjs.org/@vitest%2fcoverage-istanbul 126ms (cache miss)
+112 silly packumentCache full:https://registry.npmjs.org/@vitest%2fcoverage-istanbul set size:undefined disposed:false
+113 silly fetch manifest @vitest/coverage-v8@4.1.10
+114 silly packumentCache full:https://registry.npmjs.org/@vitest%2fcoverage-v8 cache-miss
+115 http fetch GET 200 https://registry.npmjs.org/@vitest%2fcoverage-v8 12ms (cache hit)
+116 silly packumentCache full:https://registry.npmjs.org/@vitest%2fcoverage-v8 set size:525234 disposed:false
+117 silly fetch manifest @vitest/ui@4.1.10
+118 silly packumentCache full:https://registry.npmjs.org/@vitest%2fui cache-miss
+119 http fetch GET 200 https://registry.npmjs.org/@vitest%2fui 16ms (cache hit)
+120 silly packumentCache full:https://registry.npmjs.org/@vitest%2fui set size:1272013 disposed:false
+121 verbose stack Error: unable to resolve dependency tree
+121 verbose stack     at #failPeerConflict (/home/jason/.nvm/versions/node/v20.20.1/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/build-ideal-tree.js:1360:25)
+121 verbose stack     at #loadPeerSet (/home/jason/.nvm/versions/node/v20.20.1/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/build-ideal-tree.js:1353:29)
+121 verbose stack     at async #buildDepStep (/home/jason/.nvm/versions/node/v20.20.1/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/build-ideal-tree.js:901:11)
+121 verbose stack     at async Arborist.buildIdealTree (/home/jason/.nvm/versions/node/v20.20.1/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/build-ideal-tree.js:181:7)
+121 verbose stack     at async Promise.all (index 1)
+121 verbose stack     at async Arborist.reify (/home/jason/.nvm/versions/node/v20.20.1/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:131:5)
+121 verbose stack     at async Install.exec (/home/jason/.nvm/versions/node/v20.20.1/lib/node_modules/npm/lib/commands/install.js:150:5)
+121 verbose stack     at async Npm.exec (/home/jason/.nvm/versions/node/v20.20.1/lib/node_modules/npm/lib/npm.js:207:9)
+121 verbose stack     at async module.exports (/home/jason/.nvm/versions/node/v20.20.1/lib/node_modules/npm/lib/cli/entry.js:74:5)
+122 error code ERESOLVE
+123 error ERESOLVE unable to resolve dependency tree
+124 error
+125 error While resolving: games@0.1.0
+125 error Found: vitest@2.1.9
+125 error node_modules/vitest
+125 error   dev vitest@"^2.1.8" from the root project
+125 error   peer vitest@"2.1.9" from @vitest/ui@2.1.9
+125 error   node_modules/@vitest/ui
+125 error     dev @vitest/ui@"^2.1.8" from the root project
+125 error     peerOptional @vitest/ui@"2.1.9" from vitest@2.1.9
+125 error
+125 error Could not resolve dependency:
+125 error peer vitest@"4.1.10" from @vitest/coverage-v8@4.1.10
+125 error node_modules/@vitest/coverage-v8
+125 error   dev @vitest/coverage-v8@"*" from the root project
+125 error
+125 error Fix the upstream dependency conflict, or retry
+125 error this command with --force or --legacy-peer-deps
+125 error to accept an incorrect (and potentially broken) dependency resolution.
+126 error
+126 error
+126 error For a full report see:
+126 error /tmp/claude-1000/-home-jason-workspace-agent-researcher/d7b209b4-2a3f-421a-b0b9-a9db55bf40a2/scratchpad/workspace/local/games/.npm/_logs/2026-07-11T11_16_13_633Z-eresolve-report.txt
+127 silly unfinished npm timer reify 1783768574034
+128 silly unfinished npm timer reify:loadTrees 1783768574037
+129 silly unfinished npm timer idealTree:buildDeps 1783768574264
+130 silly unfinished npm timer idealTree:#root 1783768574264
+131 verbose cwd /tmp/claude-1000/-home-jason-workspace-agent-researcher/d7b209b4-2a3f-421a-b0b9-a9db55bf40a2/scratchpad/workspace/local/games
+132 verbose os Linux 6.17.0-22-generic
+133 verbose node v22.22.3
+134 verbose npm  v10.8.2
+135 verbose exit 1
+136 verbose code 1
+137 error A complete log of this run can be found in: /tmp/claude-1000/-home-jason-workspace-agent-researcher/d7b209b4-2a3f-421a-b0b9-a9db55bf40a2/scratchpad/workspace/local/games/.npm/_logs/2026-07-11T11_16_13_633Z-debug-0.log

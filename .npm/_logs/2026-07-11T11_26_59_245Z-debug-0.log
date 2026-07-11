@@ -1,0 +1,31 @@
+0 verbose cli /home/jason/.nvm/versions/node/v22.22.3/bin/node /home/jason/.nvm/versions/node/v20.20.1/bin/npm
+1 info using npm@10.8.2
+2 info using node@v22.22.3
+3 silly config load:file:/home/jason/.nvm/versions/node/v20.20.1/lib/node_modules/npm/npmrc
+4 silly config load:file:/tmp/claude-1000/-home-jason-workspace-agent-researcher/d7b209b4-2a3f-421a-b0b9-a9db55bf40a2/scratchpad/workspace/local/games/.npmrc
+5 silly config load:file:/home/jason/.nvm/versions/node/v22.22.3/etc/npmrc
+6 verbose title npm run tsc
+7 verbose argv "run" "tsc"
+8 verbose logfile logs-max:10 dir:/tmp/claude-1000/-home-jason-workspace-agent-researcher/d7b209b4-2a3f-421a-b0b9-a9db55bf40a2/scratchpad/workspace/local/games/.npm/_logs/2026-07-11T11_26_59_245Z-
+9 verbose logfile /tmp/claude-1000/-home-jason-workspace-agent-researcher/d7b209b4-2a3f-421a-b0b9-a9db55bf40a2/scratchpad/workspace/local/games/.npm/_logs/2026-07-11T11_26_59_245Z-debug-0.log
+10 silly logfile start cleaning logs, removing 1 files
+11 silly logfile done cleaning log files
+12 verbose stack Error: Missing script: "tsc"
+12 verbose stack
+12 verbose stack To see a list of scripts, run:
+12 verbose stack   npm run
+12 verbose stack     at #run (/home/jason/.nvm/versions/node/v20.20.1/lib/node_modules/npm/lib/commands/run-script.js:110:13)
+12 verbose stack     at async RunScript.exec (/home/jason/.nvm/versions/node/v20.20.1/lib/node_modules/npm/lib/commands/run-script.js:39:7)
+12 verbose stack     at async Npm.exec (/home/jason/.nvm/versions/node/v20.20.1/lib/node_modules/npm/lib/npm.js:207:9)
+12 verbose stack     at async module.exports (/home/jason/.nvm/versions/node/v20.20.1/lib/node_modules/npm/lib/cli/entry.js:74:5)
+13 error Missing script: "tsc"
+13 error
+13 error To see a list of scripts, run:
+13 error   npm run
+14 verbose cwd /tmp/claude-1000/-home-jason-workspace-agent-researcher/d7b209b4-2a3f-421a-b0b9-a9db55bf40a2/scratchpad/workspace/local/games
+15 verbose os Linux 6.17.0-22-generic
+16 verbose node v22.22.3
+17 verbose npm  v10.8.2
+18 verbose exit 1
+19 verbose code 1
+20 error A complete log of this run can be found in: /tmp/claude-1000/-home-jason-workspace-agent-researcher/d7b209b4-2a3f-421a-b0b9-a9db55bf40a2/scratchpad/workspace/local/games/.npm/_logs/2026-07-11T11_26_59_245Z-debug-0.log
