@@ -1,0 +1,1 @@
+export { useFlappyBird } from "./useFlappyBird";
