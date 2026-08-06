@@ -25,9 +25,16 @@ export function shuffle<T>(array: T[]): T[] {
   return a;
 }
 
-export function drawCard(deck: Card[]): { card: Card; remaining: Card[] } {
+export function drawCard(
+  deck: Card[],
+  createDeckFn: () => Card[] = shuffledDeck,
+): { card: Card; remaining: Card[] } {
   const copy = [...deck];
-  return { card: copy.shift()!, remaining: copy };
+  if (copy.length === 0) {
+    return drawCard(createDeckFn(), createDeckFn);
+  }
+  const card = copy.shift()!;
+  return { card, remaining: copy };
 }
 
 /**

@@ -4,7 +4,6 @@ import { useBlackjack } from "./hooks/useBlackjack";
 import BetScreen from "./components/bet-screen";
 import Card from "./components/card";
 import PlayerHand from "./components/player-hand";
-import DealerHand from "./components/dealer-hand";
 import ActionButtons from "./components/action-buttons";
 
 export default function GamePage() {

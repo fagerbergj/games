@@ -1,22 +1,12 @@
 import { useState, useCallback, useEffect } from "react";
 import {
   shuffledDeck, drawCard as engineDraw, isBlackjack, calculateHandValue,
-  dealerDraw as engineDealerDraw, updateBankroll,
+  dealerDraw as engineDealerDraw, updateBankroll, calculatePayout,
 } from "../lib/engine";
-import { saveBankroll } from "../lib/bankroll";
+import { getBankroll, saveBankroll } from "../lib/bankroll";
 import type { Card, BlackjackState, GamePhase } from "../lib/types";
 
 const STORAGE_KEY = "blackjack_bankroll";
-
-function loadBankroll(): number {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const v = parseInt(raw ?? "", 10);
-    return Number.isFinite(v) ? Math.max(0, v) : 500;
-  } catch {
-    return 500;
-  }
-}
 
 interface Outcome {
   playerHand: Card[];
@@ -32,17 +22,17 @@ function computeResult(
   dealerCards: readonly Card[],
   bet: number,
 ): Outcome {
-  const pv    = calculateHandValue([...playerCards]);
-  const pj    = isBlackjack([...playerCards]);
   const drawn = engineDealerDraw([...deck], [...dealerCards]);
-  const dv    = calculateHandValue(drawn.hand);
-  const dj    = isBlackjack(drawn.hand);
 
-  if (pj && !dj) return { playerHand: Array.from(playerCards), dealerHand: drawn.hand, deck: [...drawn.deck], resultType: "blackjack", amount: Math.round(bet * 1.5) };
-  if (pv > 21) return { playerHand: Array.from(playerCards), dealerHand: drawn.hand, deck: [...drawn.deck], resultType: "loss", amount: -bet };
-  if (dj && !pj) return { playerHand: Array.from(playerCards), dealerHand: drawn.hand, deck: [...drawn.deck], resultType: "loss", amount: -bet };
-  if (pv > dv) return { playerHand: Array.from(playerCards), dealerHand: drawn.hand, deck: [...drawn.deck], resultType: "win", amount: bet };
-  return { playerHand: Array.from(playerCards), dealerHand: drawn.hand, deck: [...drawn.deck], resultType: "push", amount: 0 };
+  const payout = calculatePayout([...playerCards], drawn.hand, bet);
+
+  return {
+    playerHand: Array.from(playerCards),
+    dealerHand: drawn.hand,
+    deck: [...drawn.deck],
+    resultType: payout.result,
+    amount: payout.amount,
+  };
 }
 
 function resolveTurn(prev: BlackjackState | null): BlackjackState | null {
@@ -103,13 +93,13 @@ function checkBust(
 export function useBlackjack() {
   const [state, setState] = useState<BlackjackState | null>(() => ({
     playerHand: [], dealerHand: [], deck: [],
-    phase: "betting" as GamePhase, bet: 0, bankroll: loadBankroll(),
+    phase: "betting" as GamePhase, bet: 0, bankroll: getBankroll(),
   }));
 
   // Persist bankroll after every resolved outcome.
   useEffect(() => {
     if (state?.phase === "result") saveBankroll(state.bankroll);
-  }, [state]);
+  }, [state?.phase, state?.bankroll]);
 
   const peek = useCallback((prev: BlackjackState | null): BlackjackState | null => peekResolve(prev), []);
   const chkBust = useCallback((prev: BlackjackState | null): BlackjackState | null => checkBust(prev), []);
@@ -140,6 +130,7 @@ export function useBlackjack() {
     });
 
     // Peek at hole card: check for instant blackjack or just flip it.
+    // Deferring to separate render from the deal allows React to paint the initial cards before revealing the hole card, avoiding a jarring transition when dealer has blackjack.
     setTimeout(() => setState(peek), 0);
   }, [peek]);
 
