@@ -1,0 +1,7 @@
+<svg width="600" height="400" viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
+  <rect width="600" height="400" fill="#16a34a"/>
+  <text x="300" y="200" font-size="80" fill="white" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold">Kings Corner</text>
+  <text x="300" y="260" font-size="40" fill="rgba(255,255,255,0.8)" text-anchor="middle" font-family="Arial, sans-serif">Classic Card Game</text>
+  <text x="50" y="350" font-size="30" fill="white" font-family="Arial, sans-serif">♠️</text>
+  <text x="550" y="350" font-size="30" fill="white" font-family="Arial, sans-serif">♥️</text>
+</svg>
