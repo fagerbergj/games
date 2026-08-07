@@ -1,0 +1,9 @@
+services:
+  games:
+    # Published by games' publish.yml on every push to main.
+    # Pin to an immutable X.Y.Z here when a deploy should be deliberate.
+    image: ghcr.io/fagerbergj/games:latest
+    container_name: games
+    ports:
+      - "3006:3000"
+    restart: unless-stopped
