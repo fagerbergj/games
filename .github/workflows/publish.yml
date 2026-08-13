@@ -1,9 +1,9 @@
-name: publish
+name: Publish to GHCR
 
 on:
   push:
-    branches: ["main"]
-    tags: ["v*"]
+    branches: [main]
+    tags: ['v*']
 
 permissions:
   contents: read
@@ -12,12 +12,10 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      # cache-to: type=gha needs the docker-container driver; the default
-      # docker driver can't export cache and the build fails outright.
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -36,13 +34,15 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            type=sha
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v5
         with:
           context: .
-          platforms: linux/amd64
+          dockerfile: Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
