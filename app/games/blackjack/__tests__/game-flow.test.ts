@@ -20,8 +20,11 @@ function setDeck(ranks: number[]) {
   mockRanks = [...ranks, ...Array(20).fill(2)];
 }
 
+// A hand can reach "result" through more than one hop of setTimeout(0) → a
+// React effect scheduling its own timers, so drain the timer queue a few
+// times rather than once.
 function flush() {
-  act(() => { vi.runAllTimers(); });
+  for (let i = 0; i < 5; i++) act(() => { vi.runAllTimers(); });
 }
 
 beforeEach(() => {
@@ -49,7 +52,7 @@ describe("full hand: bet → deal → hit → stand → result", () => {
     expect(visibleDealerCards).toHaveLength(1);
   });
 
-  test("hit then stand resolves to a result phase with bankroll updated", () => {
+  test("stand enters dealerTurn immediately, then resolves to result once the reveal finishes", () => {
     // Deal: player [8,4]=12, dealer [7,5]=12. Hit draws 5 → player 17.
     // Stand: dealer draws 9 → dealer 21, beats player's 17 → loss.
     setDeck([8, 7, 4, 5, 5, 9]);
@@ -66,6 +69,12 @@ describe("full hand: bet → deal → hit → stand → result", () => {
     expect(result.current.state?.playerHand).toHaveLength(3);
 
     act(() => { result.current.stand(); });
+    // stand() flips the hole card and hands off to the dealer's turn on the spot —
+    // it must NOT jump straight to "result" (that's the whole point of item 7).
+    expect(result.current.state?.phase).toBe("dealerTurn");
+    expect(result.current.state?.dealerHand.every((c: Card) => c.faceUp)).toBe(true);
+
+    flush();
 
     expect(result.current.state?.phase).toBe("result");
     expect(result.current.state?.result?.result).toBe("loss");
@@ -75,8 +84,114 @@ describe("full hand: bet → deal → hit → stand → result", () => {
   });
 });
 
+describe("dealer reveal is paced, not instantaneous (item 7)", () => {
+  test("the dealer's extra card lands only after its own timer, one at a time", () => {
+    // Deal: player [8,4]=12, dealer [7,5]=12. Hit draws 5 → player 17.
+    // Stand: dealer needs exactly one more card (9) to reach 21.
+    setDeck([8, 7, 4, 5, 5, 9]);
+    const { result } = renderHook(() => useBlackjack());
+
+    act(() => { result.current.placeBet(50); });
+    flush();
+    act(() => { result.current.hit(); });
+    flush();
+
+    act(() => { result.current.stand(); });
+    expect(result.current.state?.dealerHand).toHaveLength(2); // hole flipped, no extra card yet
+    expect(result.current.state?.phase).toBe("dealerTurn");
+
+    act(() => { vi.advanceTimersByTime(599); });
+    expect(result.current.state?.dealerHand).toHaveLength(2); // still not landed
+    expect(result.current.state?.phase).toBe("dealerTurn");
+
+    act(() => { vi.advanceTimersByTime(1); }); // crosses the 600ms mark
+    expect(result.current.state?.dealerHand).toHaveLength(3); // card landed...
+    expect(result.current.state?.phase).toBe("dealerTurn"); // ...but not resolved yet
+
+    act(() => { vi.advanceTimersByTime(600); }); // the finalize tick
+    expect(result.current.state?.phase).toBe("result");
+  });
+
+  test("a multi-card dealer draw reveals each card on its own tick", () => {
+    // Dealer [up=2, hole=3]=5 must draw repeatedly: 4→9, 4→13, 4→17 (stands).
+    setDeck([10, 2, 6, 3, 4, 4, 4]);
+    const { result } = renderHook(() => useBlackjack());
+
+    act(() => { result.current.placeBet(50); });
+    flush();
+    act(() => { result.current.stand(); });
+
+    expect(result.current.state?.dealerHand).toHaveLength(2);
+    act(() => { vi.advanceTimersByTime(600); });
+    expect(result.current.state?.dealerHand).toHaveLength(3);
+    expect(result.current.state?.phase).toBe("dealerTurn");
+    act(() => { vi.advanceTimersByTime(600); });
+    expect(result.current.state?.dealerHand).toHaveLength(4);
+    expect(result.current.state?.phase).toBe("dealerTurn");
+    act(() => { vi.advanceTimersByTime(600); });
+    expect(result.current.state?.dealerHand).toHaveLength(5);
+    expect(result.current.state?.phase).toBe("dealerTurn"); // landed, not yet finalized
+    act(() => { vi.advanceTimersByTime(600); });
+    expect(result.current.state?.phase).toBe("result");
+  });
+});
+
+describe("cancel-safety of the dealer reveal (item 7)", () => {
+  test("starting a new hand mid-reveal cancels the old hand's pending timers", () => {
+    setDeck([8, 7, 4, 5, 5, 9]);
+    const { result } = renderHook(() => useBlackjack());
+
+    act(() => { result.current.placeBet(50); });
+    flush();
+    act(() => { result.current.hit(); });
+    flush();
+    const bankrollBeforeStand = result.current.state!.bankroll;
+
+    act(() => { result.current.stand(); });
+    act(() => { vi.advanceTimersByTime(300); }); // mid-reveal, before the dealer's extra card lands
+    act(() => { result.current.resetGame(); });
+
+    // Any timers the superseded hand left behind must be inert.
+    act(() => { vi.runAllTimers(); });
+
+    expect(result.current.state?.phase).toBe("betting");
+    expect(result.current.state?.bankroll).toBe(bankrollBeforeStand);
+    expect(result.current.state?.dealerHand).toHaveLength(0);
+  });
+
+  test("unmounting mid-reveal does not throw or leave a dangling timer", () => {
+    setDeck([8, 7, 4, 5, 5, 9]);
+    const { result, unmount } = renderHook(() => useBlackjack());
+
+    act(() => { result.current.placeBet(50); });
+    flush();
+    act(() => { result.current.hit(); });
+    flush();
+    act(() => { result.current.stand(); });
+    act(() => { vi.advanceTimersByTime(300); });
+
+    expect(() => unmount()).not.toThrow();
+    expect(() => act(() => { vi.runAllTimers(); })).not.toThrow();
+  });
+
+  test("the hand always reaches result eventually — reveal is never left stranded", () => {
+    setDeck([8, 7, 4, 5, 5, 9]);
+    const { result } = renderHook(() => useBlackjack());
+
+    act(() => { result.current.placeBet(50); });
+    flush();
+    act(() => { result.current.hit(); });
+    flush();
+    act(() => { result.current.stand(); });
+
+    flush(); // drains every scheduled reveal tick, however many there are
+    expect(result.current.state?.phase).toBe("result");
+    expect(result.current.state?.result).not.toBeUndefined();
+  });
+});
+
 describe("instant-blackjack branches on deal", () => {
-  test("player blackjack, dealer not → resolves immediately as a blackjack win", () => {
+  test("player blackjack, dealer not → resolves to a blackjack win once the reveal settles", () => {
     // player [A,K]=21 BJ. dealer [10,7]=17 (no BJ, no further draw).
     setDeck([1, 10, 13, 7]);
     const { result } = renderHook(() => useBlackjack());
@@ -92,7 +207,7 @@ describe("instant-blackjack branches on deal", () => {
     expect(result.current.state?.dealerHand.every((c: Card) => c.faceUp)).toBe(true);
   });
 
-  test("dealer blackjack, player not → resolves immediately as a loss", () => {
+  test("dealer blackjack, player not → resolves to a loss once the reveal settles", () => {
     // player [10,6]=16 (no BJ). dealer [A,K]=21 BJ.
     setDeck([10, 1, 6, 13]);
     const { result } = renderHook(() => useBlackjack());
