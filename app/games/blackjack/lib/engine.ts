@@ -39,7 +39,8 @@ export function drawCard(
 
 /**
  * Sum card values, treating Aces as 11 when it doesn't bust the hand.
- * Multiple aces are checked — only one counts as 11 at most.
+ * Only one Ace can ever be worth 11 (two would already total 22 alone),
+ * so count every Ace as 1 first, then upgrade a single one if it fits.
  */
 export function calculateHandValue(hand: Card[]): number {
   let value = 0;
@@ -47,18 +48,15 @@ export function calculateHandValue(hand: Card[]): number {
   for (const card of hand) {
     if (card.rank === 1) {
       aces += 1;
+      value += 1;
     } else if (card.rank >= 11) {
       value += 10;
     } else {
       value += card.rank;
     }
   }
-  for (let i = 0; i < aces; i++) {
-    if (value + 11 <= 21) {
-      value += 11;
-    } else {
-      value += 1;
-    }
+  if (aces > 0 && value + 10 <= 21) {
+    value += 10;
   }
   return value;
 }
@@ -79,11 +77,12 @@ export function dealerDraw(
   dealerHand: Card[]
 ): { hand: Card[]; deck: Card[] } {
   let currenthand = [...dealerHand];
-  const remainingdeck = [...originalDeck];
+  let remainingdeck = [...originalDeck];
 
   while (calculateHandValue(currenthand) <= 16) {
     const next = drawCard(remainingdeck);
     currenthand.push(next.card);
+    remainingdeck = next.remaining; // drawCard is pure — must reassign or the same top card redraws forever
   }
 
   return { hand: currenthand, deck: remainingdeck };
@@ -110,7 +109,8 @@ export function calculatePayout(
 
   if (pj && !dj) return { result: "blackjack", amount: Math.round(bet * 1.5) };
   if (pj && dj) return { result: "push", amount: 0 };
-  if (pj || pv > 21) return { result: "loss", amount: -bet };
+  if (pv > 21) return { result: "loss", amount: -bet };
+  if (dv > 21) return { result: "win", amount: bet };
   if (pv > dv) return { result: "win", amount: bet };
   if (dv > pv) return { result: "loss", amount: -bet };
   return { result: "push", amount: 0 };
