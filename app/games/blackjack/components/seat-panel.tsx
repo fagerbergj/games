@@ -66,11 +66,10 @@ export default function SeatPanel({
         <BankrollTray bankroll={seat.bankroll} />
       </div>
 
-      {/* An empty seat reserves no card-height ghost of its own -- the dealer zone above
-          already carries that visual weight during betting, and duplicating it per seat
-          was the ~200px of dead felt between the label and the bet spot. Some growth when
-          cards deal in is the accepted tradeoff for the table fitting on screen. */}
-      {seat.hands.length > 0 && (
+      {/* Betting reserves the same card-row footprint a dealt hand will use (ghost cards,
+          same as the dealer zone) -- keeps the felt one height instead of growing ~170px
+          when cards land, without the flat void the previous no-reservation attempt left. */}
+      {seat.hands.length > 0 ? (
         <div className="w-full flex flex-wrap gap-3 justify-center items-center">
           {seat.hands.map((h, i) => (
             <div key={h.id} className="flex flex-col items-center gap-2">
@@ -85,7 +84,11 @@ export default function SeatPanel({
             </div>
           ))}
         </div>
-      )}
+      ) : phase === "betting" ? (
+        <div className="w-full flex flex-wrap gap-3 justify-center items-center">
+          <PlayerHand cards={[]} />
+        </div>
+      ) : null}
 
       <div className="min-h-[3rem] w-full flex flex-col items-center justify-center gap-2">
         <ActionArea
