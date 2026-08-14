@@ -42,10 +42,14 @@ export default function GamePage() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-start justify-center p-3 sm:p-4">
+      <main className="flex-1 flex items-start justify-center p-3">
+        {/* min-h (not h) so the felt holds one stable height on desktop viewports without
+            clipping the rare tallest case (3 seats, one split) -- that's left to overflow
+            and scroll instead. Uncapped on mobile: there's no spare vertical budget there,
+            so the page should flow and scroll like any normal page. */}
         <div
           data-testid="felt-table"
-          className="relative w-full max-w-6xl rounded-[2rem] sm:rounded-[2.5rem] border-4 sm:border-8 border-zinc-900 shadow-2xl px-3 sm:px-10 py-3 sm:py-5 flex flex-col gap-2 sm:gap-4 bg-[radial-gradient(ellipse_at_center,_#0f3d24_0%,_#0a2c1a_60%,_#071f12_100%)]"
+          className="relative w-full max-w-6xl sm:min-h-[min(51.5rem,calc(100vh-4.5rem))] rounded-[2rem] sm:rounded-[2.5rem] border-4 sm:border-8 border-zinc-900 shadow-2xl px-3 sm:px-10 py-3 sm:py-4 flex flex-col gap-2 sm:gap-3 bg-[radial-gradient(ellipse_at_center,_#0f3d24_0%,_#0a2c1a_60%,_#071f12_100%)]"
         >
           {/* Fixed-height row regardless of phase -- the trigger pill itself is only
               actionable during betting, but its row never collapses/reappears. */}

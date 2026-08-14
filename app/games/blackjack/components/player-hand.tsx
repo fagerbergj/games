@@ -20,7 +20,7 @@ export default function PlayerHand({ cards, title, active = false, statusLabel }
   return (
     <div
       data-testid="player-zone"
-      className={`flex flex-col items-center gap-2 rounded-lg p-2 ${active ? "ring-2 ring-yellow-500" : ""}`}
+      className={`flex flex-col items-center gap-2 sm:gap-1.5 rounded-lg p-2 ${active ? "ring-2 ring-yellow-500" : ""}`}
     >
       {title && <h3 className="text-sm font-semibold tracking-wide text-white/90 uppercase">{title}</h3>}
       <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 min-h-[5rem] sm:min-h-[7rem] items-center">

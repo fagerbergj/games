@@ -16,7 +16,7 @@ export default function DealerHand({ cards }: Props) {
   const isBust = !hasHiddenCard && total > 21
 
   return (
-    <div data-testid="dealer-zone" className="flex flex-col items-center gap-2">
+    <div data-testid="dealer-zone" className="flex flex-col items-center gap-2 sm:gap-1.5">
       <h3 className="text-sm font-semibold tracking-wide text-white/90 uppercase">Dealer</h3>
       <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 min-h-[5rem] sm:min-h-[7rem] items-center">
         {cards.length > 0
