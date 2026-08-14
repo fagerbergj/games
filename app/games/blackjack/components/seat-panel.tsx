@@ -80,7 +80,7 @@ export default function SeatPanel({
                 active={isActiveSeat && seat.activeHandIndex === i && phase === "playerTurns"}
               />
               {/* Wager stays visible from deal through settlement, attributed to this hand's own column. */}
-              <ChipStack amount={h.bet} variant={h.result ? (SETTLE_VARIANT[h.result.result] ?? "neutral") : "neutral"} />
+              <ChipStack amount={h.bet} showTotal variant={h.result ? (SETTLE_VARIANT[h.result.result] ?? "neutral") : "neutral"} />
               {h.result && <ResultBanner result={h.result} dealerHasBlackjack={dealerHasBlackjack} />}
             </div>
           ))}
