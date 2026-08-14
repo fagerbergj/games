@@ -96,14 +96,32 @@ describe("exactly one deal-again-style control at result", () => {
 });
 
 describe("dealer label", () => {
-  test("a Dealer label renders alongside the seat's hand", () => {
+  test("a Dealer label renders alongside the seat's hand, without a redundant per-hand heading", () => {
     setDeck([8, 4, 7, 5]);
     render(<GamePage />);
     placeBetViaChips(50);
     flush();
 
     expect(within(screen.getByTestId("dealer-zone")).getByText("Dealer")).toBeInTheDocument();
-    expect(within(screen.getByTestId("player-zone")).getByText("Seat 1")).toBeInTheDocument();
+    // The seat panel already shows "Seat 1" once; a single-hand seat must not repeat it inside player-zone.
+    expect(screen.getByText("Seat 1")).toBeInTheDocument();
+    expect(within(screen.getByTestId("player-zone")).queryByText("Seat 1")).not.toBeInTheDocument();
+  });
+});
+
+describe("a sub-minimum bankroll gets a buy-back-in affordance, not a dead betting screen", () => {
+  test("bankroll below the smallest chip shows 'out of chips' and a working buy-back-in button", () => {
+    localStorage.setItem("blackjack_seat_bankrolls", JSON.stringify([3]));
+    render(<GamePage />);
+
+    expect(screen.getByText(/out of chips/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add $25 chip" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Place Bet" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /buy back in/i }));
+
+    expect(screen.getByTestId("bankroll-amount")).toHaveTextContent("$500");
+    expect(screen.getByRole("button", { name: "Add $25 chip" })).toBeInTheDocument();
   });
 });
 

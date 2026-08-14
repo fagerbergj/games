@@ -1,21 +1,21 @@
-import { calculateHandValue, getCardValue } from "./engine";
-import type { Card } from "./types";
+import { calculateHandValue, getCardValue, canDoubleDown } from "./engine";
+import type { Card, HouseRules } from "./types";
 
-// Chart convention: 4-8 decks, dealer STANDS on soft 17 (S17, matches this
-// game's dealerDrawRule), double on any two cards, double after split, no
-// surrender. Source: blackjack-chart.com's S17 table, cross-checked against
-// the two known S17/H17 deltas (11 vs A, soft-18 vs 6).
+// Chart convention: 4-8 decks, double on any two cards, double after split, late
+// surrender. Source: blackjack-chart.com's S17 table. The two cells that flip when
+// the table hits soft 17 (H17) instead of standing (S17) are hard 11 vs Ace and
+// soft 18 vs dealer 2 -- every other cell is identical between S17 and H17.
 
-export type Action = "hit" | "stand" | "double" | "split";
+export type Action = "hit" | "stand" | "double" | "split" | "surrender";
 
 export interface BookAdvice {
-  /** The exact chart answer, ignoring what this game's UI currently offers. */
+  /** The chart's exact answer for this hand and dealer card. */
   book: Action;
-  /** What to actually do given this game only has Hit/Stand buttons today. */
-  recommended: "hit" | "stand";
-  /** True when book !== recommended because double/split isn't offered yet. */
-  noteUnavailable: boolean;
-  /** One-sentence, situation-specific explanation of the book's reasoning. */
+  /** What to actually do at this table -- equals `book` unless a house rule blocks it. */
+  recommended: Action;
+  /** True when a house rule removed `book` as an option and `recommended` is the fallback. */
+  ruleBlocked: boolean;
+  /** One-sentence, situation-specific explanation of the book's reasoning for `book`. */
   reason: string;
 }
 
@@ -33,23 +33,24 @@ function isSoftHand(hand: readonly Card[]): boolean {
 /*  Chart lookups — d is the dealer upcard value: 1=Ace, 2-10          */
 /* ------------------------------------------------------------------ */
 
-function hardAction(total: number, d: number): Action {
+function hardAction(total: number, d: number, dealerHitsSoft17: boolean): Action {
   if (total <= 8) return "hit";
   if (total === 9) return d >= 3 && d <= 6 ? "double" : "hit";
   if (total === 10) return d >= 2 && d <= 9 ? "double" : "hit";
-  if (total === 11) return d !== 1 ? "double" : "hit";
+  if (total === 11) return d !== 1 || dealerHitsSoft17 ? "double" : "hit";
   if (total === 12) return d >= 4 && d <= 6 ? "stand" : "hit";
   if (total <= 16) return d >= 2 && d <= 6 ? "stand" : "hit";
   return "stand"; // 17+
 }
 
-function softAction(total: number, d: number): Action {
+function softAction(total: number, d: number, dealerHitsSoft17: boolean): Action {
   if (total <= 14) return d === 4 || d === 5 ? "double" : "hit"; // A,2 - A,3
   if (total <= 16) return d >= 4 && d <= 6 ? "double" : "hit"; // A,4 - A,5
   if (total === 17) return d >= 3 && d <= 6 ? "double" : "hit"; // A,6
   if (total === 18) {
     if (d >= 3 && d <= 6) return "double"; // "Ds": double, else stand
-    if (d === 2 || d === 7 || d === 8) return "stand";
+    if (d === 2) return dealerHitsSoft17 ? "double" : "stand"; // the H17/S17 soft-18 delta
+    if (d === 7 || d === 8) return "stand";
     return "hit"; // vs 9, 10, Ace
   }
   return "stand"; // A,8 / A,9
@@ -65,6 +66,13 @@ function pairAction(rank: number, d: number): Action {
   if (rank === 5) return d >= 2 && d <= 9 ? "double" : "hit"; // never split — it's a hard 10
   if (rank === 4) return d === 5 || d === 6 ? "split" : "hit";
   return d >= 2 && d <= 7 ? "split" : "hit"; // 2,2 and 3,3
+}
+
+/** Hard, non-pair totals where basic strategy forfeits half the bet rather than play it out. */
+function wantsSurrender(total: number, d: number): boolean {
+  if (total === 16) return d === 9 || d === 10 || d === 1;
+  if (total === 15) return d === 10;
+  return false;
 }
 
 /* ------------------------------------------------------------------ */
@@ -86,12 +94,14 @@ function hardReason(total: number, d: number, action: Action): string {
       : `Hit — 10 needs to grow, but dealer ${dl} is too strong a hand to risk doubling your bet into.`;
   if (total === 11)
     return action === "double"
-      ? `Double — 11 can't bust on the next card and dealer ${dl} isn't a lock; this is the strongest doubling total in the game.`
+      ? (d === 1
+          ? `Double — 11 can't bust on the next card, and a dealer forced to hit a soft 17 is weaker than the Ace up card suggests; this is the strongest doubling total in the game.`
+          : `Double — 11 can't bust on the next card and dealer ${dl} isn't a lock; this is the strongest doubling total in the game.`)
       : `Hit — 11 is strong, but the dealer's Ace threatens blackjack, so take the card without doubling the bet.`;
   if (total === 12)
     return action === "stand"
       ? `Stand — dealer busts most often showing ${dl}; let them take the risk instead of risking your own bust on 12.`
-      : `Hit — dealer ${dl} isn't weak enough to lean on; 12 busts on a ten-card either way, so take the risk yourself.`;
+      : `Hit — dealer ${dl} isn't weak enough to lean on; only a ten-card busts 12, and that's under a third of the shoe, so standing loses to a strong dealer upcard more often than the risk of hitting.`;
   if (total <= 16)
     return action === "stand"
       ? `Stand — dealer busts most often showing ${dl}; let them take the risk instead of risking your own bust on a stiff ${total}.`
@@ -110,8 +120,11 @@ function softReason(total: number, d: number, action: Action): string {
       ? `Double — soft 17 is still bust-proof on the next card, and dealer ${dl} is weak enough to press the bet.`
       : `Hit — soft 17 is too weak to stand on, and dealer ${dl} doesn't justify doubling; the ace makes hitting free.`;
   if (total === 18) {
-    if (action === "double")
-      return `Double (stand if double isn't offered) — soft 18 already holds up against dealer ${dl}, but the ace's safety makes pressing the bet the stronger play.`;
+    if (action === "double") {
+      return d === 2
+        ? `Double — a dealer forced to hit a soft 17 makes dealer 2 weak enough that pressing the bet on soft 18 beats just standing.`
+        : `Double (stand if double isn't offered) — soft 18 already holds up against dealer ${dl}, but the ace's safety makes pressing the bet the stronger play.`;
+    }
     if (action === "stand") return `Stand — soft 18 already holds up well against dealer ${dl}.`;
     return `Hit — soft 18 loses to a dealer ${dl}; the ace makes hitting free, since you can't bust.`;
   }
@@ -133,46 +146,90 @@ function pairReason(rank: number, d: number, action: Action): string {
   return `Hit — splitting ${label} isn't worth it against dealer ${dl}; play the total as a hard hand instead.`;
 }
 
+function surrenderReason(total: number, d: number): string {
+  const dl = dealerLabel(d);
+  return `Surrender — hard ${total} is too weak to stand on and too likely to bust or lose against dealer ${dl}; giving up half the bet loses less than playing it out.`;
+}
+
 /**
- * When the book says double/split but this game doesn't offer it, fall back
- * per the chart's own convention: "Dh"/split fall back to hit, except the
- * one "Ds" cell (soft 18 vs 3-6) which falls back to stand.
+ * When a house rule blocks the book's pick, fall back per the chart's own convention:
+ * double/split fall back to hit, except the one "Ds" cell (soft 18 vs 3-6) which falls
+ * back to stand, and a blocked surrender always falls back to hit.
  */
-function fallbackAction(book: "double" | "split", hand: readonly Card[], d: number, isPair: boolean): "hit" | "stand" {
+function fallbackAction(book: "double" | "split" | "surrender", hand: readonly Card[], d: number, isPair: boolean): "hit" | "stand" {
+  if (book === "surrender") return "hit";
   if (book === "split") {
     const rank = getCardValue(hand[0].rank);
     if (rank === 1) return "hit"; // A,A as a hard/soft 12 — hit is the honest fallback
-    return hardAction(rank * 2, d) === "stand" ? "stand" : "hit";
+    return hardAction(rank * 2, d, false) === "stand" ? "stand" : "hit";
   }
   const isDsCell = !isPair && isSoftHand(hand) && calculateHandValue([...hand]) === 18 && d >= 3 && d <= 6;
   return isDsCell ? "stand" : "hit";
 }
 
-export function getBookAdvice(hand: readonly Card[], dealerUpCard: Card): BookAdvice {
+/**
+ * Checks whether `book` is actually offered at this table and, if not, resolves
+ * the standard basic-strategy fallback for it.
+ */
+function ruleAdjustedFallback(
+  book: Action, hand: readonly Card[], d: number, isPair: boolean, rules: HouseRules, isSplitHand: boolean,
+): Action {
+  if (book === "surrender") return rules.surrender === "late" ? "surrender" : fallbackAction("surrender", hand, d, isPair);
+  if (book === "double") return canDoubleDown([...hand], rules, isSplitHand) ? "double" : fallbackAction("double", hand, d, isPair);
+  if (book === "split") return rules.maxSplits > 0 ? "split" : fallbackAction("split", hand, d, isPair);
+  return book;
+}
+
+/** This table's actual house rules, so a toggled rule changes the chart's answer, not just the game. */
+export function getBookAdvice(hand: readonly Card[], dealerUpCard: Card, rules: HouseRules, isSplitHand = false): BookAdvice {
   const d = getCardValue(dealerUpCard.rank);
   const isPair = hand.length === 2 && getCardValue(hand[0].rank) === getCardValue(hand[1].rank);
+  const total = calculateHandValue([...hand]);
 
   let book: Action;
   let reason: string;
 
-  if (isPair) {
+  if (!isPair && !isSoftHand(hand) && hand.length === 2 && wantsSurrender(total, d)) {
+    book = "surrender";
+    reason = surrenderReason(total, d);
+  } else if (isPair) {
     const rank = getCardValue(hand[0].rank);
     book = pairAction(rank, d);
     reason = pairReason(rank, d, book);
+  } else if (isSoftHand(hand)) {
+    book = softAction(total, d, rules.dealerHitsSoft17);
+    reason = softReason(total, d, book);
   } else {
-    const total = calculateHandValue([...hand]);
-    if (isSoftHand(hand)) {
-      book = softAction(total, d);
-      reason = softReason(total, d, book);
-    } else {
-      book = hardAction(total, d);
-      reason = hardReason(total, d, book);
-    }
+    book = hardAction(total, d, rules.dealerHitsSoft17);
+    reason = hardReason(total, d, book);
   }
 
-  if (book === "hit" || book === "stand") {
-    return { book, recommended: book, noteUnavailable: false, reason };
-  }
+  const recommended = ruleAdjustedFallback(book, hand, d, isPair, rules, isSplitHand);
+  return { book, recommended, ruleBlocked: recommended !== book, reason };
+}
 
-  return { book, recommended: fallbackAction(book, hand, d, isPair), noteUnavailable: true, reason };
+/** True count from which a ten-rich shoe flips insurance from a losing bet to a profitable one. */
+export const INSURANCE_TAKE_THRESHOLD = 3;
+
+export interface InsuranceAdvice {
+  take: boolean;
+  reason: string;
+}
+
+/**
+ * Insurance pays 2:1 that the hole card is a ten, but a fresh shoe is under a third
+ * ten-value cards — worse odds than the bet needs to break even. A high enough true
+ * count (ten-rich shoe) is the one thing that flips that math in the player's favor.
+ */
+export function getInsuranceAdvice(trueCount: number): InsuranceAdvice {
+  if (trueCount >= INSURANCE_TAKE_THRESHOLD) {
+    return {
+      take: true,
+      reason: "The shoe is ten-rich enough right now that the hole card is a ten more than a third of the time — insurance is a profitable side bet at this count.",
+    };
+  }
+  return {
+    take: false,
+    reason: "Insurance pays 2:1, but the hole card is a ten less than a third of the time — it's a side bet against yourself that loses money over the long run.",
+  };
 }

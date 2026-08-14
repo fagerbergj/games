@@ -57,6 +57,18 @@ export const HOUSE_RULE_LABELS: Record<keyof HouseRules, { title: string; blurb:
   },
 };
 
+/** One-line summary for the collapsed rules panel, e.g. "6 decks · S17 · 3:2 · DAS · Late surrender · 3 splits". */
+export function summarizeHouseRules(rules: HouseRules, deckCount: number): string {
+  return [
+    `${deckCount} deck${deckCount > 1 ? "s" : ""}`,
+    rules.dealerHitsSoft17 ? "H17" : "S17",
+    rules.blackjackPayout,
+    rules.doubleAfterSplit ? "DAS" : "No DAS",
+    rules.surrender === "late" ? "Late surrender" : "No surrender",
+    rules.maxSplits === 0 ? "No splitting" : `${rules.maxSplits} splits`,
+  ].join(" · ");
+}
+
 function clampMaxSplits(n: number): number {
   return Math.min(MAX_SPLITS_CAP, Math.max(0, Math.round(n)));
 }

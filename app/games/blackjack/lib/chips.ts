@@ -1,6 +1,8 @@
 /** Casino chip denominations, largest first, sized against a $500 starting bankroll. */
 export const CHIP_DENOMINATIONS = [500, 100, 25, 5] as const;
 export type ChipDenomination = (typeof CHIP_DENOMINATIONS)[number];
+/** Smallest chip on the tray — a bankroll below this can't place any bet at all. */
+export const MIN_CHIP_DENOMINATION = Math.min(...CHIP_DENOMINATIONS);
 
 /** Standard US casino ladder shifted to our four denominations. */
 export const CHIP_COLORS: Record<ChipDenomination, { fill: string; ring: string; text: string }> = {

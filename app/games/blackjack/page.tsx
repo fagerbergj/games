@@ -1,10 +1,10 @@
 "use client"
 
 import { useBlackjack } from "./hooks/useBlackjack";
+import { isBlackjack } from "./lib/engine";
 import DealerHand from "./components/dealer-hand";
 import SeatPanel from "./components/seat-panel";
 import RulesPanel from "./components/rules-panel";
-import DeckSelector from "./components/deck-selector";
 import CountPanel from "./components/count-panel";
 
 export default function GamePage() {
@@ -12,13 +12,14 @@ export default function GamePage() {
     state, placeBet, setSeatCount, setHouseRules, startRound,
     hit, stand, double, split, surrender,
     takeInsurance, declineInsurance, takeEvenMoney,
-    resetRound, resetSeatBankroll, actions,
+    resetRound, resetSeatBankroll, buyBackIn, actions,
     deckCount, setDeckCount, justReshuffled,
     runningCount, trueCount, decksRemaining, lastCountedCard, countVisible, toggleCountVisible,
   } = useBlackjack(1);
 
   const { phase, seats, dealerHand, activeSeatIndex, houseRules } = state;
   const allBetsPlaced = seats.every(s => s.pendingBet > 0);
+  const dealerHasBlackjack = phase === "result" && isBlackjack(dealerHand);
   // Mid-hand only -- at result the New Round button below is the one canonical reset control.
   const showHeaderReset = phase === "insurance" || phase === "playerTurns" || phase === "dealerTurn";
 
@@ -60,12 +61,13 @@ export default function GamePage() {
 
           {phase === "betting" ? (
             <div className="flex flex-col items-center gap-4">
-              <DeckSelector deckCount={deckCount} onChange={setDeckCount} />
               <RulesPanel
                 rules={houseRules}
                 seatCount={seats.length}
+                deckCount={deckCount}
                 onRulesChange={setHouseRules}
                 onSeatCountChange={setSeatCount}
+                onDeckCountChange={setDeckCount}
               />
             </div>
           ) : (
@@ -89,12 +91,16 @@ export default function GamePage() {
                 isActiveSeat={phase === "playerTurns" ? i === activeSeatIndex : true}
                 actions={phase === "playerTurns" && i === activeSeatIndex ? actions : null}
                 dealerUpCard={dealerHand[0]}
+                dealerHasBlackjack={dealerHasBlackjack}
+                houseRules={houseRules}
+                trueCount={trueCount}
                 onPlaceBet={amount => placeBet(i, amount)}
                 onHit={hit} onStand={stand} onDouble={double} onSplit={split} onSurrender={surrender}
                 onTakeInsurance={amount => takeInsurance(i, amount)}
                 onDeclineInsurance={() => declineInsurance(i)}
                 onTakeEvenMoney={() => takeEvenMoney(i)}
                 onResetBankroll={() => resetSeatBankroll(i)}
+                onBuyBackIn={() => buyBackIn(i)}
               />
             ))}
           </div>

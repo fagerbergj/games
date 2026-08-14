@@ -141,7 +141,7 @@ export function calculatePayout(
   const dj = isBlackjack(dealerHandRevealed);
   const blackjackMultiplier = rules.blackjackPayout === "6:5" ? 1.2 : 1.5;
 
-  if (pj && !dj) return { result: "blackjack", amount: Math.round(bet * blackjackMultiplier) };
+  if (pj && !dj) return { result: "blackjack", amount: bet * blackjackMultiplier };
   if (pj && dj) return { result: "push", amount: 0 };
   if (pv > 21) return { result: "loss", amount: -bet };
   if (dv > 21) return { result: "win", amount: bet };
