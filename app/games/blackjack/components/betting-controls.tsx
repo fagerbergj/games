@@ -12,6 +12,8 @@ interface Props {
   /** seat.lastWager — prefilled as an uncommitted suggestion when it still fits the bankroll. */
   lastWager: number;
   onBet: (amount: number) => void;
+  /** Count trigger, rendered beside the chip row rather than floating on its own. */
+  countTrigger?: React.ReactNode;
 }
 
 /**
@@ -19,7 +21,7 @@ interface Props {
  * (prefilled from last hand's wager, or built up chip by chip) is what commits — tap it.
  * Mounts fresh each hand, so the uncommitted wager resets for free.
  */
-export default function BettingControls({ bankroll, pendingBet, lastWager, onBet }: Props) {
+export default function BettingControls({ bankroll, pendingBet, lastWager, onBet, countTrigger }: Props) {
   const staged = lastWager > 0 && lastWager <= bankroll ? lastWager : 0;
   const [wager, setWager] = useState(staged);
 
@@ -27,7 +29,10 @@ export default function BettingControls({ bankroll, pendingBet, lastWager, onBet
     return (
       <div className="flex flex-col items-center gap-2">
         <ChipStack amount={pendingBet} />
-        <p className="text-zinc-500 text-xs">Bet placed — waiting on the table</p>
+        <div className="flex items-center gap-2">
+          <p className="text-zinc-500 text-xs">Bet placed — waiting on the table</p>
+          {countTrigger}
+        </div>
       </div>
     );
   }
@@ -42,7 +47,7 @@ export default function BettingControls({ bankroll, pendingBet, lastWager, onBet
   };
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-2">
       <div aria-live="polite" className="sr-only">Current wager {formatMoney(wager)}</div>
 
       <button
@@ -55,7 +60,7 @@ export default function BettingControls({ bankroll, pendingBet, lastWager, onBet
         <ChipStack amount={wager} emptyLabel="Place bet" />
       </button>
 
-      <div className="flex gap-2 flex-wrap justify-center">
+      <div className="flex gap-2 flex-wrap justify-center items-center">
         {CHIP_DENOMINATIONS.map(denom => (
           <Chip
             key={denom}
@@ -64,6 +69,7 @@ export default function BettingControls({ bankroll, pendingBet, lastWager, onBet
             disabled={wager + denom > bankroll}
           />
         ))}
+        {countTrigger}
       </div>
 
       <button

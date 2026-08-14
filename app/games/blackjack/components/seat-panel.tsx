@@ -6,7 +6,6 @@ import ActionArea from "./action-area"
 import BankrollTray from "./bankroll-tray"
 import ChipStack from "./chip-stack"
 import ResultBanner from "./result-banner"
-import CountTrigger from "./count-trigger"
 
 interface Actions {
   canHit: boolean
@@ -60,22 +59,20 @@ export default function SeatPanel({
   runningCount, decksRemaining, lastCountedCard, countVisible, onToggleCountVisible, justReshuffled,
   countOpen, onToggleCount, onCloseCount,
 }: Props) {
-  // The count matters where a player is about to act on it: sizing a bet, or playing a hand.
-  const showCountTrigger = phase === "betting" || (phase === "playerTurns" && isActiveSeat)
-
   return (
-    <div className={`bg-white/5 border rounded-2xl p-3 sm:p-4 flex flex-col items-center gap-3 ${isActiveSeat ? "border-yellow-500" : "border-white/10"}`}>
+    <div className={`bg-white/5 border rounded-2xl p-3 sm:p-4 flex flex-col items-center gap-2 ${isActiveSeat ? "border-yellow-500" : "border-white/10"}`}>
       <div className="flex items-center justify-between w-full gap-2">
         <span className="text-zinc-200 text-sm font-semibold uppercase tracking-wide">{seat.label}</span>
         <BankrollTray bankroll={seat.bankroll} />
       </div>
 
-      {/* Same trick as the dealer zone: an empty seat shows a ghost hand + an empty betting
-          circle (both components' own placeholder states) rather than nothing, so dealing in
-          reuses that same footprint instead of growing the seat -- no extra height budget to tune. */}
-      <div className="w-full flex flex-wrap gap-3 justify-center items-center">
-        {seat.hands.length > 0 ? (
-          seat.hands.map((h, i) => (
+      {/* An empty seat reserves no card-height ghost of its own -- the dealer zone above
+          already carries that visual weight during betting, and duplicating it per seat
+          was the ~200px of dead felt between the label and the bet spot. Some growth when
+          cards deal in is the accepted tradeoff for the table fitting on screen. */}
+      {seat.hands.length > 0 && (
+        <div className="w-full flex flex-wrap gap-3 justify-center items-center">
+          {seat.hands.map((h, i) => (
             <div key={h.id} className="flex flex-col items-center gap-2">
               <PlayerHand
                 cards={h.cards}
@@ -86,31 +83,11 @@ export default function SeatPanel({
               <ChipStack amount={h.bet} variant={h.result ? (SETTLE_VARIANT[h.result.result] ?? "neutral") : "neutral"} />
               {h.result && <ResultBanner result={h.result} dealerHasBlackjack={dealerHasBlackjack} />}
             </div>
-          ))
-        ) : (
-          <div className="flex flex-col items-center gap-2">
-            <PlayerHand cards={[]} />
-            <ChipStack amount={seat.pendingBet} />
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
-      <div className="min-h-[11rem] w-full flex flex-col items-center justify-center gap-2">
-        {showCountTrigger && (
-          <CountTrigger
-            open={countOpen}
-            onToggle={onToggleCount}
-            onClose={onCloseCount}
-            runningCount={runningCount}
-            trueCountValue={trueCount}
-            decksLeft={decksRemaining}
-            lastCountedCard={lastCountedCard}
-            visible={countVisible}
-            onToggleVisible={onToggleCountVisible}
-            justReshuffled={justReshuffled}
-          />
-        )}
-
+      <div className="min-h-[3rem] w-full flex flex-col items-center justify-center gap-2">
         <ActionArea
           seat={seat}
           phase={phase}
@@ -123,6 +100,15 @@ export default function SeatPanel({
           onHit={onHit} onStand={onStand} onDouble={onDouble} onSplit={onSplit} onSurrender={onSurrender}
           onTakeInsurance={onTakeInsurance} onDeclineInsurance={onDeclineInsurance} onTakeEvenMoney={onTakeEvenMoney}
           onBuyBackIn={onBuyBackIn}
+          runningCount={runningCount}
+          decksRemaining={decksRemaining}
+          lastCountedCard={lastCountedCard}
+          countVisible={countVisible}
+          onToggleCountVisible={onToggleCountVisible}
+          justReshuffled={justReshuffled}
+          countOpen={countOpen}
+          onToggleCount={onToggleCount}
+          onCloseCount={onCloseCount}
         />
       </div>
 

@@ -27,7 +27,7 @@ export default function GamePage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
-      <header className="bg-zinc-900 border-b border-zinc-800 p-4">
+      <header className="bg-zinc-900 border-b border-zinc-800 p-2">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <h1 className="text-xl font-bold text-green-400">Blackjack</h1>
           {showHeaderReset && (
@@ -42,10 +42,10 @@ export default function GamePage() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-start justify-center p-3 sm:p-6">
+      <main className="flex-1 flex items-start justify-center p-3 sm:p-4">
         <div
           data-testid="felt-table"
-          className="relative w-full max-w-6xl rounded-[2rem] sm:rounded-[2.5rem] border-4 sm:border-8 border-zinc-900 shadow-2xl px-3 sm:px-10 py-6 sm:py-10 flex flex-col gap-5 sm:gap-8 bg-[radial-gradient(ellipse_at_center,_#0f3d24_0%,_#0a2c1a_60%,_#071f12_100%)]"
+          className="relative w-full max-w-6xl rounded-[2rem] sm:rounded-[2.5rem] border-4 sm:border-8 border-zinc-900 shadow-2xl px-3 sm:px-10 py-3 sm:py-5 flex flex-col gap-2 sm:gap-4 bg-[radial-gradient(ellipse_at_center,_#0f3d24_0%,_#0a2c1a_60%,_#071f12_100%)]"
         >
           {/* Fixed-height row regardless of phase -- the trigger pill itself is only
               actionable during betting, but its row never collapses/reappears. */}
@@ -73,7 +73,7 @@ export default function GamePage() {
             {phase === "result" && "Round over"}
           </p>
 
-          <div className={`grid gap-4 ${seats.length > 1 ? "sm:grid-cols-2 lg:grid-cols-3" : ""} border-t border-white/10 pt-5`}>
+          <div className={`grid gap-4 ${seats.length > 1 ? "sm:grid-cols-2 lg:grid-cols-3" : ""} border-t border-white/10 pt-2`}>
             {seats.map((seat, i) => (
               <SeatPanel
                 key={seat.id}
@@ -107,10 +107,10 @@ export default function GamePage() {
 
           {/* Fixed-height row -- betting deals itself in the moment every seat has
               committed, so New Round is the only control that ever lives here. */}
-          <div className="h-16 flex items-center justify-center">
+          <div className="h-11 flex items-center justify-center">
             {phase === "result" && (
               <button onClick={resetRound}
-                className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-3 px-8 rounded-lg text-lg">
+                className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-8 rounded-lg text-lg">
                 New Round
               </button>
             )}

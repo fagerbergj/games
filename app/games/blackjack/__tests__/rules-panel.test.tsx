@@ -94,11 +94,10 @@ describe("tabs group the settings instead of one long column", () => {
     setup();
     fireEvent.click(screen.getByRole("button", { name: "Table rules" }));
 
-    // Table tab (default): deck count, seats, payout, soft 17, peek.
+    // Table tab (default): deck count, seats, payout, soft 17.
     expect(screen.getByRole("combobox", { name: "Seats" })).toBeInTheDocument();
     expect(screen.getByText(/blackjack payout/i)).toBeInTheDocument();
     expect(screen.getByText(/dealer soft 17/i)).toBeInTheDocument();
-    expect(screen.getByText(/dealer peek/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Doubling & splitting" }));
     expect(screen.getByText(/double down on/i)).toBeInTheDocument();
@@ -106,7 +105,9 @@ describe("tabs group the settings instead of one long column", () => {
     expect(screen.getByText(/splits allowed/i)).toBeInTheDocument();
     expect(screen.getByText(/split aces get one card/i)).toBeInTheDocument();
 
+    // Peek lives here, not on the Table tab -- five settings didn't fit the tab's fixed height.
     fireEvent.click(screen.getByRole("tab", { name: "Surrender & insurance" }));
+    expect(screen.getByText(/dealer peek/i)).toBeInTheDocument();
     expect(screen.getByText(/^surrender$/i)).toBeInTheDocument();
     expect(screen.getByText(/^insurance$/i)).toBeInTheDocument();
   });
