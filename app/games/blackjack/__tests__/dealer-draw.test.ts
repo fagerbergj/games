@@ -1,4 +1,4 @@
-import { dealerDraw, dealerDrawRule } from "../lib/engine";
+import { dealerDraw, dealerDrawRule, calculateHandValue } from "../lib/engine";
 import type { Card } from "../lib/types";
 
 /* ------------------------------------------------------------------ */
@@ -97,5 +97,42 @@ describe("dealerDraw", () => {
 
     expect(hand).toHaveLength(origLenHand);
     expect(deck).toHaveLength(origLenDeck);
+  });
+
+  test("each draw consumes the deck — no repeated top card across multiple draws", () => {
+    // Hand [2, 3] = 5 needs several draws before standing. Deck has 4 distinct cards
+    // so the top card can never legitimately repeat.
+    const hand = [{ id: "p-2", suit: "spades" as const, rank: 2, faceUp: true },
+                  { id: "p-3", suit: "spades" as const, rank: 3, faceUp: true }];
+    const deck = [
+      { id: "d-1", suit: "hearts" as const, rank: 4, faceUp: true },
+      { id: "d-2", suit: "hearts" as const, rank: 4, faceUp: true },
+      { id: "d-3", suit: "hearts" as const, rank: 4, faceUp: true },
+      { id: "d-4", suit: "hearts" as const, rank: 10, faceUp: true },
+    ];
+    const originalLength = deck.length;
+
+    const result = dealerDraw(deck, [...hand]);
+    const drawnFromDeck = result.hand.slice(hand.length);
+
+    // 5 → draw 4 (9) → draw 4 (13) → draw 4 (17, stands): three draws, all distinct ids.
+    expect(drawnFromDeck.map(c => c.id)).toEqual(["d-1", "d-2", "d-3"]);
+    const ids = drawnFromDeck.map(c => c.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(result.deck.length + drawnFromDeck.length).toBe(originalLength);
+  });
+
+  test("multi-draw sequence never repeats a card and the deck shrinks by exactly the cards drawn", () => {
+    const hand = [card(2), card(2)]; // 4
+    const deck = [card(2), card(3), card(4), card(5), card(10)].map((c, i) => ({ ...c, id: `seq-${i}` }));
+    const originalLength = deck.length;
+
+    const result = dealerDraw(deck, [...hand]);
+    const drawnFromDeck = result.hand.slice(hand.length);
+    const ids = drawnFromDeck.map(c => c.id);
+
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(result.deck.length + drawnFromDeck.length).toBe(originalLength);
+    expect(calculateHandValue(result.hand)).toBeGreaterThanOrEqual(17);
   });
 });

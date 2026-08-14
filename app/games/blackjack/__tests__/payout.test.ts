@@ -69,10 +69,44 @@ describe("calculatePayout — normal game results", () => {
   });
 });
 
+describe("calculatePayout — dealer bust", () => {
+  test("dealer 22 vs player 18 → win", () => {
+    const player = makeHand([10, 8]);          // 18
+    const dealer = makeHand([9, 6, 7]);        // 22 (bust)
+    expect(calculatePayout(player, dealer, 100)).toEqual({ result: "win", amount: 100 });
+  });
+
+  test("dealer 24 (A+3+K+K) vs player 19 → win", () => {
+    // Live-bug regression: dealer bust must win for the player, not resolve as a loss.
+    const player = makeHand([10, 9]);          // 19
+    const dealer = makeHand([1, 3, 13, 13]);   // A+3+K+K = 24 (bust)
+    expect(calculatePayout(player, dealer, 5)).toEqual({ result: "win", amount: 5 });
+  });
+
+  test("dealer 26 vs player 20 → win", () => {
+    const player = makeHand([10, 10]);         // 20
+    const dealer = makeHand([10, 10, 6]);      // 26 (bust)
+    expect(calculatePayout(player, dealer, 50)).toEqual({ result: "win", amount: 50 });
+  });
+
+  test("both bust → player still loses (player busts first, standard rule)", () => {
+    const player = makeHand([10, 6, 9]);       // 25 (bust)
+    const dealer = makeHand([9, 6, 7]);        // 22 (bust)
+    expect(calculatePayout(player, dealer, 75)).toEqual({ result: "loss", amount: -75 });
+  });
+});
+
 describe("updateBankroll", () => {
   test("win — bankroll increases by bet",       ()   => { expect(updateBankroll(600, 100)).toBe(700); });
   test("loss — bankroll decreases by bet",      ()   => { expect(updateBankroll(500, -100)).toBe(400); });
   test("push — no change",                      ()   => { expect(updateBankroll(500, 0)).toBe(500); });
   test("blackjack win",                         ()   => { expect(updateBankroll(500, 250)).toBe(750); });
   test("overshoot — bankroll clamped at zero",  ()   => { expect(updateBankroll(30, -60)).toBe(0); });
+
+  // Rule: a loss can never push the bankroll below zero, it floors at 0 rather than going negative.
+  // In practice this never truncates a real stake, because placeBet (hooks/useBlackjack.ts) already
+  // clamps every bet to at most the current bankroll before a hand is dealt.
+  test("a loss larger than the bankroll floors at zero, it does not go negative", () => {
+    expect(updateBankroll(20, -50)).toBe(0);
+  });
 });
