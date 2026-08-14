@@ -7,10 +7,11 @@ import { CHIP_DENOMINATIONS } from "../lib/chips"
 interface Props {
   bankroll: number;
   onBet: (amount: number) => void;
+  confirmLabel?: string;
 }
 
 /** Chip tray + betting circle. Mounts fresh each hand, so wager state resets for free. */
-export default function BettingControls({ bankroll, onBet }: Props) {
+export default function BettingControls({ bankroll, onBet, confirmLabel = "Deal" }: Props) {
   const [chips, setChips] = useState<number[]>([]);
   const wager = useMemo(() => chips.reduce((sum, c) => sum + c, 0), [chips]);
 
@@ -57,7 +58,7 @@ export default function BettingControls({ bankroll, onBet }: Props) {
           disabled={!canDeal}
           className="bg-yellow-500 hover:bg-yellow-600 disabled:opacity-30 disabled:cursor-not-allowed text-black font-bold px-8 py-2 rounded-lg text-sm"
         >
-          Deal
+          {confirmLabel}
         </button>
       </div>
     </div>
