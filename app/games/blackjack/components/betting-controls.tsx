@@ -45,22 +45,29 @@ export default function BettingControls({ bankroll, pendingBet, lastWager, onBet
   const commit = () => {
     if (wager > 0) onBet(wager);
   };
+  // Same string drives the aria-label and the visible caption, so the label-in-name stays trivially true.
+  const commitLabel = wager > 0 ? `Place bet of ${formatMoney(wager)}` : "Add a chip to place a bet";
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-3">
       <div aria-live="polite" className="sr-only">Current wager {formatMoney(wager)}</div>
 
+      {/* The only commit control -- one click stages -> deals. Visible caption (not just
+          aria-label) is what makes that obvious to a sighted first-time player. */}
       <button
         type="button"
         onClick={commit}
         disabled={wager === 0}
-        aria-label={wager > 0 ? `Place bet of ${formatMoney(wager)}` : "Add a chip to place a bet"}
-        className="rounded-full border-2 border-dashed border-white/20 opacity-70 hover:opacity-100 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+        aria-label={commitLabel}
+        className="flex flex-col items-center gap-1.5 rounded-3xl border-2 border-dashed border-yellow-500/70 bg-yellow-500/10 hover:bg-yellow-500/20 hover:border-yellow-400 disabled:border-white/20 disabled:bg-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-colors px-5 py-3"
       >
-        <ChipStack amount={wager} emptyLabel="Place bet" />
+        <ChipStack amount={wager} />
+        <span className={`text-sm font-bold ${wager > 0 ? "text-yellow-400" : "text-zinc-500"}`}>
+          {commitLabel}
+        </span>
       </button>
 
-      <div className="flex gap-2 flex-wrap justify-center items-center">
+      <div className="flex gap-5 flex-wrap justify-center items-center">
         {CHIP_DENOMINATIONS.map(denom => (
           <Chip
             key={denom}
@@ -69,7 +76,11 @@ export default function BettingControls({ bankroll, pendingBet, lastWager, onBet
             disabled={wager + denom > bankroll}
           />
         ))}
-        {countTrigger}
+        {countTrigger && (
+          <div className="flex items-center pl-4 sm:border-l sm:border-white/15">
+            {countTrigger}
+          </div>
+        )}
       </div>
 
       <button

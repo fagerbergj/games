@@ -38,6 +38,8 @@ interface Props {
   onDeclineInsurance: () => void;
   onTakeEvenMoney: () => void;
   onBuyBackIn: () => void;
+  /** Only passed for the seat that should render the table-wide New Round control. */
+  onResetRound?: () => void;
   runningCount: number;
   decksRemaining: number;
   lastCountedCard?: { card: Card; delta: number };
@@ -53,7 +55,7 @@ interface Props {
 export default function ActionArea({
   seat, phase, isActiveSeat, actions, dealerUpCard, houseRules, trueCount,
   onPlaceBet, onHit, onStand, onDouble, onSplit, onSurrender,
-  onTakeInsurance, onDeclineInsurance, onTakeEvenMoney, onBuyBackIn,
+  onTakeInsurance, onDeclineInsurance, onTakeEvenMoney, onBuyBackIn, onResetRound,
   runningCount, decksRemaining, lastCountedCard, countVisible, onToggleCountVisible, justReshuffled,
   countOpen, onToggleCount, onCloseCount,
 }: Props) {
@@ -158,8 +160,23 @@ export default function ActionArea({
     return isActiveSeat ? <p className="text-zinc-400 text-sm animate-pulse">Dealer is drawing&hellip;</p> : null;
   }
 
-  if (phase === "result" && seat.insurance && seat.insurance.bet > 0) {
-    return <p className="text-xs text-zinc-500">Insurance {seat.insurance.result === "win" ? "won" : "lost"}</p>;
+  if (phase === "result") {
+    const insuranceNote = seat.insurance && seat.insurance.bet > 0
+      ? <p className="text-xs text-zinc-500">Insurance {seat.insurance.result === "win" ? "won" : "lost"}</p>
+      : null;
+    // Lands where Hit/Stand just were, so ending one hand and starting the next barely moves the cursor.
+    if (!insuranceNote && !onResetRound) return null;
+    return (
+      <div className="flex flex-col items-center gap-2">
+        {insuranceNote}
+        {onResetRound && (
+          <button type="button" onClick={onResetRound}
+            className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-8 rounded-lg text-lg">
+            New Round
+          </button>
+        )}
+      </div>
+    );
   }
 
   return null;
