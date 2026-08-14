@@ -1,12 +1,14 @@
 const KEY = "blackjack_bankroll";
 
+export const DEFAULT_BANKROLL = 500;
+
 export function getBankroll(): number {
   try {
     const raw = localStorage.getItem(KEY);
     const n = parseInt(raw ?? "", 10);
-    return Number.isFinite(n) && n >= 0 ? n : 500;
+    return Number.isFinite(n) && n >= 0 ? n : DEFAULT_BANKROLL;
   } catch {
-    return 500;
+    return DEFAULT_BANKROLL;
   }
 }
 

@@ -3,9 +3,9 @@ import {
   drawCard as engineDraw, isBlackjack, calculateHandValue,
   dealerDraw as engineDealerDraw, updateBankroll, calculatePayout,
 } from "../lib/engine";
-import { createShoe, needsReshuffle } from "../lib/shoe";
+import { createShoe, needsReshuffle, DEFAULT_DECK_COUNT } from "../lib/shoe";
 import { hiLoValue, runningCount as sumHiLo, decksRemaining as computeDecksRemaining, trueCount as computeTrueCount } from "../lib/count";
-import { getBankroll, saveBankroll } from "../lib/bankroll";
+import { getBankroll, saveBankroll, DEFAULT_BANKROLL } from "../lib/bankroll";
 import { getDeckCount, saveDeckCount, getCountVisible, saveCountVisible } from "../lib/settings";
 import type { Card, BlackjackState, GamePhase } from "../lib/types";
 
@@ -95,9 +95,11 @@ export function useBlackjack() {
   // hands (resetGame only clears playerHand/dealerHand/bet/phase), so
   // there's one source of truth for "what's left to deal" and nothing
   // separate to keep in sync with it.
+  // Initial state must match SSR (no localStorage access) to avoid a
+  // hydration mismatch; the mount effect below swaps in stored values.
   const [state, setState] = useState<BlackjackState | null>(() => ({
-    playerHand: [], dealerHand: [], deck: createShoe(getDeckCount()),
-    phase: "betting" as GamePhase, bet: 0, bankroll: getBankroll(),
+    playerHand: [], dealerHand: [], deck: createShoe(DEFAULT_DECK_COUNT),
+    phase: "betting" as GamePhase, bet: 0, bankroll: DEFAULT_BANKROLL,
   }));
 
   // Identifies the "live" hand. Reveal timers compare against this before
@@ -107,12 +109,27 @@ export function useBlackjack() {
   const handIdRef = useRef(0);
 
   // --- Deck count + card-counting state ---
-  const [deckCount, setDeckCountState] = useState<number>(() => getDeckCount());
+  const [deckCount, setDeckCountState] = useState<number>(DEFAULT_DECK_COUNT);
   const [justReshuffled, setJustReshuffled] = useState(false);
   const [runningCountValue, setRunningCountValue] = useState(0);
   const [lastCountedCard, setLastCountedCard] = useState<{ card: Card; delta: number } | undefined>();
-  const [countVisible, setCountVisibleState] = useState<boolean>(() => getCountVisible());
+  const [countVisible, setCountVisibleState] = useState<boolean>(false);
   const countedIds = useRef<Set<string>>(new Set());
+
+  // Adopt persisted values once mounted -- the initial render above uses
+  // SSR-safe defaults so hydration matches, this pulls in the real values.
+  useEffect(() => {
+    const storedDeckCount = getDeckCount();
+    const storedBankroll = getBankroll();
+    const storedCountVisible = getCountVisible();
+    if (storedDeckCount === DEFAULT_DECK_COUNT && storedBankroll === DEFAULT_BANKROLL && !storedCountVisible) {
+      return; // nothing persisted diverges from the defaults already on screen
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate one-time hydration adoption of browser-only values, not a data-fetch loop
+    setDeckCountState(storedDeckCount);
+    setCountVisibleState(storedCountVisible);
+    setState(prev => (prev ? { ...prev, bankroll: storedBankroll, deck: createShoe(storedDeckCount) } : prev));
+  }, []);
 
   // Persist bankroll after every resolved outcome.
   useEffect(() => {
