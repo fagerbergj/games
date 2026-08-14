@@ -1,6 +1,8 @@
 "use client"
 import BettingControls from "./betting-controls"
+import DeckSelector from "./deck-selector"
 import ActionButtons from "./action-buttons"
+import StrategyHint from "./strategy-hint"
 import ChipStack from "./chip-stack"
 import ResultBanner from "./result-banner"
 import type { BlackjackState } from "../lib/types"
@@ -11,6 +13,8 @@ interface Props {
   onHit: () => void;
   onStand: () => void;
   onDealAgain: () => void;
+  deckCount: number;
+  onDeckCountChange: (n: number) => void;
 }
 
 const SETTLE_VARIANT: Record<string, "win" | "loss" | "push"> = {
@@ -18,9 +22,14 @@ const SETTLE_VARIANT: Record<string, "win" | "loss" | "push"> = {
 };
 
 /** The one place controls live -- swaps by phase so the felt underneath never moves. */
-export default function ActionArea({ state, onBet, onHit, onStand, onDealAgain }: Props) {
+export default function ActionArea({ state, onBet, onHit, onStand, onDealAgain, deckCount, onDeckCountChange }: Props) {
   if (state.phase === "betting") {
-    return <BettingControls bankroll={state.bankroll} onBet={onBet} />;
+    return (
+      <div className="flex flex-col items-center gap-4">
+        <DeckSelector deckCount={deckCount} onChange={onDeckCountChange} />
+        <BettingControls bankroll={state.bankroll} onBet={onBet} />
+      </div>
+    );
   }
 
   if (state.phase === "playerTurn") {
@@ -28,6 +37,7 @@ export default function ActionArea({ state, onBet, onHit, onStand, onDealAgain }
       <div className="flex flex-col items-center gap-3">
         <ChipStack amount={state.bet} />
         <ActionButtons onHit={onHit} onStand={onStand} />
+        <StrategyHint playerHand={state.playerHand} dealerUpCard={state.dealerHand[0]} />
       </div>
     );
   }

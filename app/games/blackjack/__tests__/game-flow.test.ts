@@ -3,14 +3,17 @@ import { useBlackjack } from "../hooks/useBlackjack";
 import type { Card } from "../lib/types";
 
 // placeBet deals in draw order: player1, dealerUp, player2, dealerHole.
-// Stubbing shuffledDeck to a fixed rank sequence makes every hand deterministic.
+// Stubbing createShoe to a fixed rank sequence makes every hand deterministic.
+// Reshuffling is disabled here -- shoe depletion/reshuffle behavior has its
+// own coverage in shoe-continuity.test.ts; these tests are about hand logic.
 let mockRanks: number[] = [];
 
-vi.mock("../lib/engine", async () => {
-  const actual = await vi.importActual<typeof import("../lib/engine")>("../lib/engine");
+vi.mock("../lib/shoe", async () => {
+  const actual = await vi.importActual<typeof import("../lib/shoe")>("../lib/shoe");
   return {
     ...actual,
-    shuffledDeck: () => mockRanks.map((rank, i) => ({ id: `m-${i}`, suit: "spades" as const, rank, faceUp: true })),
+    createShoe: () => mockRanks.map((rank, i) => ({ id: `m-${i}`, suit: "spades" as const, rank, faceUp: true })),
+    needsReshuffle: () => false,
   };
 });
 
