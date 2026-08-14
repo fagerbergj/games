@@ -1,9 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import {
-  shuffledDeck, drawCard as engineDraw, isBlackjack, calculateHandValue,
+  drawCard as engineDraw, isBlackjack, calculateHandValue,
   dealerDraw as engineDealerDraw, updateBankroll, calculatePayout,
 } from "../lib/engine";
+import { createShoe, needsReshuffle } from "../lib/shoe";
+import { hiLoValue, runningCount as sumHiLo, decksRemaining as computeDecksRemaining, trueCount as computeTrueCount } from "../lib/count";
 import { getBankroll, saveBankroll } from "../lib/bankroll";
+import { getDeckCount, saveDeckCount, getCountVisible, saveCountVisible } from "../lib/settings";
 import type { Card, BlackjackState, GamePhase } from "../lib/types";
 
 const STORAGE_KEY = "blackjack_bankroll";
@@ -86,10 +89,14 @@ function checkBust(prev: BlackjackState | null): BlackjackState | null {
   return prev; // No change.
 }
 
-/** Hook that manages a single blackjack hand. */
+/** Hook that manages a single blackjack hand plus its continuing shoe. */
 export function useBlackjack() {
+  // state.deck IS the shoe's live remainder -- it's never wiped between
+  // hands (resetGame only clears playerHand/dealerHand/bet/phase), so
+  // there's one source of truth for "what's left to deal" and nothing
+  // separate to keep in sync with it.
   const [state, setState] = useState<BlackjackState | null>(() => ({
-    playerHand: [], dealerHand: [], deck: [],
+    playerHand: [], dealerHand: [], deck: createShoe(getDeckCount()),
     phase: "betting" as GamePhase, bet: 0, bankroll: getBankroll(),
   }));
 
@@ -99,10 +106,32 @@ export function useBlackjack() {
   // skipped.
   const handIdRef = useRef(0);
 
+  // --- Deck count + card-counting state ---
+  const [deckCount, setDeckCountState] = useState<number>(() => getDeckCount());
+  const [justReshuffled, setJustReshuffled] = useState(false);
+  const [runningCountValue, setRunningCountValue] = useState(0);
+  const [lastCountedCard, setLastCountedCard] = useState<{ card: Card; delta: number } | undefined>();
+  const [countVisible, setCountVisibleState] = useState<boolean>(() => getCountVisible());
+  const countedIds = useRef<Set<string>>(new Set());
+
   // Persist bankroll after every resolved outcome.
   useEffect(() => {
     if (state?.phase === "result") saveBankroll(state.bankroll);
   }, [state?.phase, state?.bankroll]);
+
+  // Card counting is decoupled from every draw/reveal call site: whenever a
+  // previously-unseen card becomes face-up anywhere in the current hand, tag
+  // it once by id. This stays correct regardless of the paced dealer reveal.
+  useEffect(() => {
+    if (!state) return;
+    const visible = [...state.playerHand, ...state.dealerHand].filter(c => c.faceUp);
+    const fresh = visible.filter(c => !countedIds.current.has(c.id));
+    if (fresh.length === 0) return;
+    for (const c of fresh) countedIds.current.add(c.id);
+    setRunningCountValue(rc => rc + sumHiLo(fresh));
+    const last = fresh[fresh.length - 1];
+    setLastCountedCard({ card: last, delta: hiLoValue(last.rank) });
+  }, [state]);
 
   // Draws the dealer's finished hand card by card, then applies the payout.
   // Fires once per hand entering dealerTurn (keyed on the phase value, not
@@ -149,20 +178,46 @@ export function useBlackjack() {
 
   // --- Actions ---
 
-  /** User confirms a bet. Deals cards and checks for instant blackjack. */
-  const placeBet = useCallback((amount: number) => {
-    setState(prev => {
-      if (!prev) return null;
-      if (prev.phase !== "betting") return prev;
-      const bet = Math.min(Math.max(1, Math.floor(amount)), prev.bankroll);
-      if (bet <= 0) return prev;
+  const setDeckCount = useCallback((n: number) => {
+    saveDeckCount(n);
+    setDeckCountState(n);
+    setRunningCountValue(0);
+    setLastCountedCard(undefined);
+    countedIds.current.clear();
+    setState(prev => (prev ? { ...prev, deck: createShoe(n) } : prev));
+  }, []);
 
-      // Deal four cards from shuffled deck.
-      const deck     = shuffledDeck();
-      const pc1      = engineDraw(deck);              // player card  1
-      const dc1Up   = engineDraw(pc1.remaining);       // dealer upcard
-      const pc2      = engineDraw(dc1Up.remaining);    // player card  2
-      const dc2Down = engineDraw(pc2.remaining);        // dealer hole
+  const toggleCountVisible = useCallback(() => {
+    setCountVisibleState(v => {
+      const next = !v;
+      saveCountVisible(next);
+      return next;
+    });
+  }, []);
+
+  /** User confirms a bet. Reshuffles at the penetration threshold, then deals; checks for instant blackjack. */
+  const placeBet = useCallback((amount: number) => {
+    if (!state || state.phase !== "betting") return;
+    const bet = Math.min(Math.max(1, Math.floor(amount)), state.bankroll);
+    if (bet <= 0) return;
+
+    // Reshuffle only ever considered here, at a hand boundary -- never mid-hand.
+    const reshuffling = needsReshuffle(state.deck.length, deckCount);
+    const startingDeck = reshuffling ? createShoe(deckCount) : state.deck;
+    if (reshuffling) {
+      setRunningCountValue(0);
+      setLastCountedCard(undefined);
+      countedIds.current.clear();
+    }
+    setJustReshuffled(reshuffling);
+
+    setState(prev => {
+      if (!prev || prev.phase !== "betting") return prev;
+
+      const pc1     = engineDraw(startingDeck, () => createShoe(deckCount));    // player card  1
+      const dc1Up   = engineDraw(pc1.remaining, () => createShoe(deckCount));   // dealer upcard
+      const pc2     = engineDraw(dc1Up.remaining, () => createShoe(deckCount)); // player card  2
+      const dc2Down = engineDraw(pc2.remaining, () => createShoe(deckCount));   // dealer hole
 
       return {
         ...prev,
@@ -177,20 +232,26 @@ export function useBlackjack() {
     // Peek at hole card: check for instant blackjack or just flip it.
     // Deferring to separate render from the deal allows React to paint the initial cards before revealing the hole card, avoiding a jarring transition when dealer has blackjack.
     setTimeout(() => setState(peekResolve), 0);
-  }, []);
+  }, [state, deckCount]);
 
   /** Draw one more card for the player. Bust/21 resolves automatically. */
   const hit = useCallback(() => {
     setState(prev => {
       if (!prev || prev.phase !== "playerTurn") return prev;
-      const drawn   = engineDraw(prev.deck);
+      // The penetration floor keeps every hand's starting shoe well above what
+      // a hand can consume, so this fallback should be unreachable -- if it
+      // fires, that's a bug in the threshold, not something to hide.
+      const drawn = engineDraw(prev.deck, () => {
+        console.error("blackjack: shoe exhausted mid-hand -- penetration threshold gave insufficient headroom");
+        return createShoe(deckCount);
+      });
       const newHand = [...prev.playerHand, drawn.card];
       return { ...prev, playerHand: newHand, deck: drawn.remaining };
     });
 
     // Check for bust / auto-stand after card lands.
     setTimeout(() => setState(checkBust), 0);
-  }, []);
+  }, [deckCount]);
 
   /** Stop drawing — dealer plays out hand, revealed one card at a time. */
   const stand = useCallback(() => {
@@ -200,24 +261,32 @@ export function useBlackjack() {
     });
   }, []);
 
-  /** Reset to betting screen (keep bankroll). Cancels any in-flight reveal. */
+  /** Reset to betting screen (keep bankroll and the continuing shoe). Cancels any in-flight reveal. */
   const resetGame = useCallback(() => {
     handIdRef.current += 1;
     setState(prev => ({
-      playerHand: [], dealerHand: [], deck: [],
+      playerHand: [], dealerHand: [], deck: prev?.deck ?? createShoe(getDeckCount()),
       phase: "betting" as GamePhase, bet: 0, bankroll: prev?.bankroll ?? getBankroll(),
     }));
   }, []);
 
-  /** Reset bankroll to starting stack (500) and show betting screen. */
+  /** Reset bankroll to starting stack (500) and show betting screen (shoe keeps going). */
   const resetBankroll = useCallback(() => {
     handIdRef.current += 1;
     try { localStorage.setItem(STORAGE_KEY, "500"); } catch { /* noop */ }
-    setState({
-      playerHand: [], dealerHand: [], deck: [],
+    setState(prev => ({
+      playerHand: [], dealerHand: [], deck: prev?.deck ?? createShoe(getDeckCount()),
       phase: "betting" as GamePhase, bet: 0, bankroll: 500,
-    });
+    }));
   }, []);
 
-  return { state, placeBet, hit, stand, resetGame, resetBankroll };
+  const decksLeft = computeDecksRemaining(state?.deck.length ?? 0);
+  const trueCountValue = computeTrueCount(runningCountValue, decksLeft);
+
+  return {
+    state, placeBet, hit, stand, resetGame, resetBankroll,
+    deckCount, setDeckCount, justReshuffled,
+    runningCount: runningCountValue, trueCount: trueCountValue, decksRemaining: decksLeft, lastCountedCard,
+    countVisible, toggleCountVisible,
+  };
 }

@@ -1,13 +1,15 @@
 import { render, screen, within, act, fireEvent } from "@testing-library/react";
 import GamePage from "../page";
 
-// Same deterministic-deck trick as game-flow.test.ts.
+// Same deterministic-deck trick as game-flow.test.ts. Reshuffling disabled --
+// out of scope for these UI tests, covered separately in shoe-continuity.test.ts.
 let mockRanks: number[] = [];
-vi.mock("../lib/engine", async () => {
-  const actual = await vi.importActual<typeof import("../lib/engine")>("../lib/engine");
+vi.mock("../lib/shoe", async () => {
+  const actual = await vi.importActual<typeof import("../lib/shoe")>("../lib/shoe");
   return {
     ...actual,
-    shuffledDeck: () => mockRanks.map((rank, i) => ({ id: `m-${i}`, suit: "spades" as const, rank, faceUp: true })),
+    createShoe: () => mockRanks.map((rank, i) => ({ id: `m-${i}`, suit: "spades" as const, rank, faceUp: true })),
+    needsReshuffle: () => false,
   };
 });
 function setDeck(ranks: number[]) {
