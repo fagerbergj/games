@@ -46,9 +46,6 @@ export default function ActionArea({
   onTakeInsurance, onDeclineInsurance, onTakeEvenMoney, onBuyBackIn,
 }: Props) {
   if (phase === "betting") {
-    if (seat.pendingBet > 0) {
-      return <p className="text-zinc-500 text-xs">Bet placed — waiting on the table</p>;
-    }
     if (seat.bankroll < MIN_CHIP_DENOMINATION) {
       return (
         <div className="flex flex-col items-center gap-2">
@@ -60,7 +57,7 @@ export default function ActionArea({
         </div>
       );
     }
-    return <BettingControls bankroll={seat.bankroll} onBet={onPlaceBet} confirmLabel="Place Bet" />;
+    return <BettingControls bankroll={seat.bankroll} pendingBet={seat.pendingBet} lastWager={seat.lastWager} onBet={onPlaceBet} />;
   }
 
   if (phase === "insurance") {

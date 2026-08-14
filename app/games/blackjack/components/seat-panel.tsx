@@ -6,6 +6,7 @@ import ActionArea from "./action-area"
 import BankrollTray from "./bankroll-tray"
 import ChipStack from "./chip-stack"
 import ResultBanner from "./result-banner"
+import CountTrigger from "./count-trigger"
 
 interface Actions {
   canHit: boolean
@@ -37,6 +38,15 @@ interface Props {
   onTakeEvenMoney: () => void
   onResetBankroll: () => void
   onBuyBackIn: () => void
+  runningCount: number
+  decksRemaining: number
+  lastCountedCard?: { card: Card; delta: number }
+  countVisible: boolean
+  onToggleCountVisible: () => void
+  justReshuffled: boolean
+  countOpen: boolean
+  onToggleCount: () => void
+  onCloseCount: () => void
 }
 
 const SETTLE_VARIANT: Record<string, "win" | "loss" | "push"> = {
@@ -47,7 +57,12 @@ export default function SeatPanel({
   seat, phase, isActiveSeat, actions, dealerUpCard, dealerHasBlackjack, houseRules, trueCount,
   onPlaceBet, onHit, onStand, onDouble, onSplit, onSurrender,
   onTakeInsurance, onDeclineInsurance, onTakeEvenMoney, onResetBankroll, onBuyBackIn,
+  runningCount, decksRemaining, lastCountedCard, countVisible, onToggleCountVisible, justReshuffled,
+  countOpen, onToggleCount, onCloseCount,
 }: Props) {
+  // The count matters where a player is about to act on it: sizing a bet, or playing a hand.
+  const showCountTrigger = phase === "betting" || (phase === "playerTurns" && isActiveSeat)
+
   return (
     <div className={`bg-white/5 border rounded-2xl p-3 sm:p-4 flex flex-col items-center gap-3 ${isActiveSeat ? "border-yellow-500" : "border-white/10"}`}>
       <div className="flex items-center justify-between w-full gap-2">
@@ -55,9 +70,12 @@ export default function SeatPanel({
         <BankrollTray bankroll={seat.bankroll} />
       </div>
 
-      {seat.hands.length > 0 ? (
-        <div className="flex flex-wrap gap-3 justify-center">
-          {seat.hands.map((h, i) => (
+      {/* Same trick as the dealer zone: an empty seat shows a ghost hand + an empty betting
+          circle (both components' own placeholder states) rather than nothing, so dealing in
+          reuses that same footprint instead of growing the seat -- no extra height budget to tune. */}
+      <div className="w-full flex flex-wrap gap-3 justify-center items-center">
+        {seat.hands.length > 0 ? (
+          seat.hands.map((h, i) => (
             <div key={h.id} className="flex flex-col items-center gap-2">
               <PlayerHand
                 cards={h.cards}
@@ -68,25 +86,45 @@ export default function SeatPanel({
               <ChipStack amount={h.bet} variant={h.result ? (SETTLE_VARIANT[h.result.result] ?? "neutral") : "neutral"} />
               {h.result && <ResultBanner result={h.result} dealerHasBlackjack={dealerHasBlackjack} />}
             </div>
-          ))}
-        </div>
-      ) : (
-        seat.pendingBet > 0 && <ChipStack amount={seat.pendingBet} />
-      )}
+          ))
+        ) : (
+          <div className="flex flex-col items-center gap-2">
+            <PlayerHand cards={[]} />
+            <ChipStack amount={seat.pendingBet} />
+          </div>
+        )}
+      </div>
 
-      <ActionArea
-        seat={seat}
-        phase={phase}
-        isActiveSeat={isActiveSeat}
-        actions={actions}
-        dealerUpCard={dealerUpCard}
-        houseRules={houseRules}
-        trueCount={trueCount}
-        onPlaceBet={onPlaceBet}
-        onHit={onHit} onStand={onStand} onDouble={onDouble} onSplit={onSplit} onSurrender={onSurrender}
-        onTakeInsurance={onTakeInsurance} onDeclineInsurance={onDeclineInsurance} onTakeEvenMoney={onTakeEvenMoney}
-        onBuyBackIn={onBuyBackIn}
-      />
+      <div className="min-h-[11rem] w-full flex flex-col items-center justify-center gap-2">
+        {showCountTrigger && (
+          <CountTrigger
+            open={countOpen}
+            onToggle={onToggleCount}
+            onClose={onCloseCount}
+            runningCount={runningCount}
+            trueCountValue={trueCount}
+            decksLeft={decksRemaining}
+            lastCountedCard={lastCountedCard}
+            visible={countVisible}
+            onToggleVisible={onToggleCountVisible}
+            justReshuffled={justReshuffled}
+          />
+        )}
+
+        <ActionArea
+          seat={seat}
+          phase={phase}
+          isActiveSeat={isActiveSeat}
+          actions={actions}
+          dealerUpCard={dealerUpCard}
+          houseRules={houseRules}
+          trueCount={trueCount}
+          onPlaceBet={onPlaceBet}
+          onHit={onHit} onStand={onStand} onDouble={onDouble} onSplit={onSplit} onSurrender={onSurrender}
+          onTakeInsurance={onTakeInsurance} onDeclineInsurance={onDeclineInsurance} onTakeEvenMoney={onTakeEvenMoney}
+          onBuyBackIn={onBuyBackIn}
+        />
+      </div>
 
       {phase === "result" && seat.bankroll <= 0 && (
         <button type="button" onClick={onResetBankroll}

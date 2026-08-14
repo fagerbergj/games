@@ -27,8 +27,8 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-// Clicks a chip button by its accessible name, then Place Bet + Deal — drives the
-// game through the same chip-based betting flow a player uses (single default seat).
+// Clicks chip buttons to build the wager, then taps the betting circle to commit it —
+// the round auto-starts once every seat (just the one, here) has committed.
 function placeBetViaChips(amount: number) {
   const denomsDesc = [500, 100, 25, 5];
   let remaining = amount;
@@ -38,8 +38,7 @@ function placeBetViaChips(amount: number) {
       remaining -= denom;
     }
   }
-  fireEvent.click(screen.getByRole("button", { name: "Place Bet" }));
-  fireEvent.click(screen.getByRole("button", { name: "Deal" }));
+  fireEvent.click(screen.getByRole("button", { name: `Place bet of $${amount}` }));
 }
 
 function dealToResult(playerCards: number[], dealerUp: number, dealerHole: number, dealerDraws: number[] = [], bet = 50) {
@@ -116,7 +115,7 @@ describe("a sub-minimum bankroll gets a buy-back-in affordance, not a dead betti
 
     expect(screen.getByText(/out of chips/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add $25 chip" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Place Bet" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add a chip to place a bet" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /buy back in/i }));
 
@@ -274,5 +273,81 @@ describe("one persistent table across every phase", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "New Round" }));
     expect(screen.getByRole("button", { name: "Add $25 chip" })).toBeInTheDocument();
+  });
+});
+
+describe("card count moved to a popover beside the seat's own controls", () => {
+  test("the trigger opens and closes the count panel during betting, as an overlay rather than in-flow content", () => {
+    render(<GamePage />);
+    const trigger = screen.getByRole("button", { name: "Card count" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    const panelText = screen.getByText(/hidden — count it yourself/i);
+    expect(panelText.closest(".absolute")).not.toBeNull();
+
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText(/hidden — count it yourself/i)).not.toBeInTheDocument();
+  });
+
+  test("the trigger is also reachable during the player's turn, next to Hit/Stand", () => {
+    setDeck([8, 4, 7, 5]);
+    render(<GamePage />);
+    placeBetViaChips(50);
+    flush();
+
+    expect(screen.getByRole("button", { name: "Hit" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Card count" }));
+    expect(screen.getByText(/hidden — count it yourself/i)).toBeInTheDocument();
+  });
+
+  test("Escape closes the count popover", () => {
+    render(<GamePage />);
+    const trigger = screen.getByRole("button", { name: "Card count" });
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText(/hidden — count it yourself/i)).not.toBeInTheDocument();
+  });
+
+  test("with two seats, opening one seat's popover closes the other's", () => {
+    render(<GamePage />);
+    fireEvent.click(screen.getByRole("button", { name: "Table rules" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Seats" }), { target: { value: "2" } });
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    const triggers = screen.getAllByRole("button", { name: "Card count" });
+    expect(triggers).toHaveLength(2);
+
+    fireEvent.click(triggers[0]);
+    expect(screen.getAllByText(/hidden — count it yourself/i)).toHaveLength(1);
+
+    fireEvent.click(triggers[1]);
+    expect(screen.getAllByText(/hidden — count it yourself/i)).toHaveLength(1);
+    expect(triggers[0]).toHaveAttribute("aria-expanded", "false");
+    expect(triggers[1]).toHaveAttribute("aria-expanded", "true");
+  });
+});
+
+describe("the next hand is prefilled and one tap away, no Deal button", () => {
+  test("New Round prefills the previous wager as an uncommitted bet; tapping it deals immediately", () => {
+    dealToResult([9, 8], 7, 6, [9], 50);
+    fireEvent.click(screen.getByRole("button", { name: "New Round" }));
+
+    const commitButton = screen.getByRole("button", { name: "Place bet of $50" });
+    fireEvent.click(commitButton);
+    flush();
+
+    expect(screen.getByTestId("player-zone")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /place bet/i })).not.toBeInTheDocument();
+  });
+
+  test("the very first hand of a session has nothing prefilled", () => {
+    render(<GamePage />);
+    expect(screen.getByRole("button", { name: "Add a chip to place a bet" })).toBeInTheDocument();
   });
 });

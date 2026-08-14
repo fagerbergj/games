@@ -142,7 +142,10 @@ function startRound(state: BlackjackTableState, deckCount: number): BlackjackTab
   const seats = state.seats.map((seat, i) => {
     const cards = dealt[i];
     const hand = createHand(cards, seat.pendingBet, isBlackjack(cards) ? { status: "stood" } : {});
-    return { ...seat, hands: [hand], pendingBet: 0, activeHandIndex: 0, done: false, insurance: null, evenMoneyTaken: false };
+    return {
+      ...seat, hands: [hand], pendingBet: 0, activeHandIndex: 0, done: false, insurance: null,
+      evenMoneyTaken: false, lastWager: seat.pendingBet,
+    };
   });
 
   const dealtState: BlackjackTableState = { ...state, seats, dealerHand, deck, activeSeatIndex: 0, phase: "playerTurns" };
@@ -533,6 +536,14 @@ export function useBlackjack(initialSeatCount = 1) {
       return startRound(s, deckCount);
     });
   }, [deckCount]);
+
+  // No Deal button: the moment every seat has a committed wager, deal. startRoundAction
+  // already no-ops outside the betting phase, so a stray re-run here is harmless.
+  useEffect(() => {
+    if (state.phase === "betting" && state.seats.length > 0 && state.seats.every(s => s.pendingBet > 0)) {
+      startRoundAction();
+    }
+  }, [state, startRoundAction]);
 
   const hitAction = useCallback(() => setState(s => hit(s, deckCount)), [deckCount]);
   const standAction = useCallback(() => setState(stand), []);

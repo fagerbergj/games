@@ -336,3 +336,47 @@ describe("placeBet / startRound guards against stray calls", () => {
     expect(result.current.state.phase).toBe("playerTurns");
   });
 });
+
+describe("betting auto-starts once every seat has committed -- there is no Deal button", () => {
+  test("a single seat deals itself the moment it places a bet", () => {
+    setDeck([8, 4, 7, 5]);
+    const { result } = renderHook(() => useBlackjack(1));
+
+    act(() => { result.current.placeBet(0, 50); });
+
+    expect(result.current.state.phase).toBe("playerTurns");
+    expect(result.current.state.seats[0].hands[0].cards).toHaveLength(2);
+  });
+
+  test("two seats wait for both bets before dealing, then deal on the second", () => {
+    setDeck([8, 7, 6, 5, 4, 3]);
+    const { result } = renderHook(() => useBlackjack(2));
+
+    act(() => { result.current.placeBet(0, 50); });
+    expect(result.current.state.phase).toBe("betting");
+
+    act(() => { result.current.placeBet(1, 50); });
+    expect(result.current.state.phase).toBe("playerTurns");
+  });
+});
+
+describe("a seat's last wager carries across a settled round", () => {
+  test("lastWager survives resetRound so the next betting screen can prefill it", () => {
+    setDeck([8, 4, 7, 5, 9]);
+    const { result } = renderHook(() => useBlackjack(1));
+
+    act(() => { result.current.placeBet(0, 50); });
+    expect(result.current.state.seats[0].lastWager).toBe(50);
+    expect(result.current.state.seats[0].pendingBet).toBe(0); // committed straight into the hand, not left pending
+
+    act(() => { result.current.stand(); });
+    flush();
+    expect(result.current.state.phase).toBe("result");
+
+    act(() => { result.current.resetRound(); });
+
+    expect(result.current.state.phase).toBe("betting");
+    expect(result.current.state.seats[0].lastWager).toBe(50);
+    expect(result.current.state.seats[0].pendingBet).toBe(0);
+  });
+});
