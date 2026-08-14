@@ -37,6 +37,7 @@ interface Props {
   onTakeEvenMoney: () => void
   onResetBankroll: () => void
   onBuyBackIn: () => void
+  onResetRound?: () => void
   runningCount: number
   decksRemaining: number
   lastCountedCard?: { card: Card; delta: number }
@@ -55,7 +56,7 @@ const SETTLE_VARIANT: Record<string, "win" | "loss" | "push"> = {
 export default function SeatPanel({
   seat, phase, isActiveSeat, actions, dealerUpCard, dealerHasBlackjack, houseRules, trueCount,
   onPlaceBet, onHit, onStand, onDouble, onSplit, onSurrender,
-  onTakeInsurance, onDeclineInsurance, onTakeEvenMoney, onResetBankroll, onBuyBackIn,
+  onTakeInsurance, onDeclineInsurance, onTakeEvenMoney, onResetBankroll, onBuyBackIn, onResetRound,
   runningCount, decksRemaining, lastCountedCard, countVisible, onToggleCountVisible, justReshuffled,
   countOpen, onToggleCount, onCloseCount,
 }: Props) {
@@ -90,7 +91,7 @@ export default function SeatPanel({
         </div>
       ) : null}
 
-      <div className="min-h-[3rem] w-full flex flex-col items-center justify-center gap-2">
+      <div data-testid="action-zone" className="min-h-[3rem] w-full flex flex-col items-center justify-center gap-2">
         <ActionArea
           seat={seat}
           phase={phase}
@@ -103,6 +104,7 @@ export default function SeatPanel({
           onHit={onHit} onStand={onStand} onDouble={onDouble} onSplit={onSplit} onSurrender={onSurrender}
           onTakeInsurance={onTakeInsurance} onDeclineInsurance={onDeclineInsurance} onTakeEvenMoney={onTakeEvenMoney}
           onBuyBackIn={onBuyBackIn}
+          onResetRound={onResetRound}
           runningCount={runningCount}
           decksRemaining={decksRemaining}
           lastCountedCard={lastCountedCard}

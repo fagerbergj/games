@@ -75,4 +75,18 @@ describe("item 8: chip-based betting", () => {
     expect(screen.getByText(/bet placed/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add $25 chip" })).not.toBeInTheDocument();
   });
+
+  test("the commit control carries a visible on-screen label, not just an aria-label", () => {
+    render(<BettingControls bankroll={500} pendingBet={0} lastWager={0} onBet={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add $25 chip" }));
+    const commitButton = screen.getByRole("button", { name: "Place bet of $25" });
+    // Sighted players read this off the button itself, not an aria-label they never see.
+    expect(commitButton).toHaveTextContent("Place bet of $25");
+  });
+
+  test("with nothing staged, the commit control's visible text still explains what to do", () => {
+    render(<BettingControls bankroll={500} pendingBet={0} lastWager={0} onBet={() => {}} />);
+    const commitButton = screen.getByRole("button", { name: "Add a chip to place a bet" });
+    expect(commitButton).toHaveTextContent("Add a chip to place a bet");
+  });
 });

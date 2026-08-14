@@ -92,6 +92,14 @@ describe("exactly one deal-again-style control at result", () => {
 
     expect(screen.getByRole("button", { name: "New Hand" })).toBeInTheDocument();
   });
+
+  test("New Round renders in the seat's action zone, the same spot Hit/Stand occupied", () => {
+    dealToResult([1, 13], 10, 7);
+    flush();
+
+    const actionZone = screen.getByTestId("action-zone");
+    expect(within(actionZone).getByRole("button", { name: "New Round" })).toBeInTheDocument();
+  });
 });
 
 describe("dealer label", () => {

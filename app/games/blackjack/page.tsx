@@ -96,6 +96,7 @@ export default function GamePage() {
                 onTakeEvenMoney={() => takeEvenMoney(i)}
                 onResetBankroll={() => resetSeatBankroll(i)}
                 onBuyBackIn={() => buyBackIn(i)}
+                onResetRound={i === 0 ? resetRound : undefined}
                 runningCount={runningCount}
                 decksRemaining={decksRemaining}
                 lastCountedCard={lastCountedCard}
@@ -107,17 +108,6 @@ export default function GamePage() {
                 onCloseCount={() => setCountPopoverSeat(s => (s === i ? null : s))}
               />
             ))}
-          </div>
-
-          {/* Fixed-height row -- betting deals itself in the moment every seat has
-              committed, so New Round is the only control that ever lives here. */}
-          <div className="h-11 flex items-center justify-center">
-            {phase === "result" && (
-              <button onClick={resetRound}
-                className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-8 rounded-lg text-lg">
-                New Round
-              </button>
-            )}
           </div>
         </div>
       </main>

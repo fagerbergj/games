@@ -32,7 +32,7 @@ export default function CountTrigger({ open, onToggle, onClose, ...count }: Prop
         onClick={onToggle}
         aria-expanded={open}
         aria-label="Card count"
-        className="text-xs bg-black/30 hover:bg-black/40 border border-white/10 rounded-full px-3 py-1 text-zinc-300 font-semibold"
+        className="h-11 px-4 flex items-center text-sm bg-black/30 hover:bg-black/40 border border-white/10 rounded-full text-zinc-300 font-semibold"
       >
         Count
       </button>
