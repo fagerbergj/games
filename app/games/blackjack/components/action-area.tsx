@@ -81,9 +81,9 @@ export default function ActionArea({
       return (
         <div className="flex flex-col items-center gap-2">
           <p className="text-zinc-400 text-sm">You&rsquo;re out of chips</p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <button type="button" onClick={onBuyBackIn}
-              className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold text-sm px-4 py-2 rounded-lg">
+              className="min-h-11 flex items-center bg-yellow-500 hover:bg-yellow-600 text-black font-bold text-sm px-4 py-2 rounded-lg">
               Buy back in ({formatMoney(STARTING_BANKROLL)})
             </button>
             {countTrigger}
@@ -111,21 +111,23 @@ export default function ActionArea({
     }
     return (
       <div className="flex flex-col items-center gap-3">
-        <div className="flex gap-2 flex-wrap justify-center">
+        {/* Same gap/height treatment as the main action row (#21) -- opposite-consequence
+            money buttons offered under time pressure need the same touch-target floor. */}
+        <div className="flex gap-4 flex-wrap justify-center">
           <button type="button" onClick={() => onTakeInsurance((hand?.bet ?? 0) / 2)}
             title="Side bet, up to half your wager, pays 2:1 if the dealer has blackjack"
-            className="bg-blue-700 hover:bg-blue-600 text-white text-sm px-3 py-2 rounded-lg">
+            className="min-h-11 flex items-center bg-blue-700 hover:bg-blue-600 text-white font-bold text-sm px-4 py-2 rounded-lg">
             Insurance ({formatMoney((hand?.bet ?? 0) / 2)})
           </button>
           {eligibleForEvenMoney && (
             <button type="button" onClick={onTakeEvenMoney}
               title="Lock in a guaranteed 1:1 payout on your blackjack instead of risking the dealer also having one"
-              className="bg-green-700 hover:bg-green-600 text-white text-sm px-3 py-2 rounded-lg">
+              className="min-h-11 flex items-center bg-green-700 hover:bg-green-600 text-white font-bold text-sm px-4 py-2 rounded-lg">
               Even money
             </button>
           )}
           <button type="button" onClick={onDeclineInsurance}
-            className="bg-zinc-700 hover:bg-zinc-600 text-white text-sm px-3 py-2 rounded-lg">
+            className="min-h-11 flex items-center bg-zinc-700 hover:bg-zinc-600 text-white font-bold text-sm px-4 py-2 rounded-lg">
             No insurance
           </button>
         </div>

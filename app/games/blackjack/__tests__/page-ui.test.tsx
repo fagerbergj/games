@@ -125,10 +125,40 @@ describe("a sub-minimum bankroll gets a buy-back-in affordance, not a dead betti
     expect(screen.queryByRole("button", { name: "Add $25 chip" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add a chip to place a bet" })).not.toBeInTheDocument();
 
+    // Same touch-target floor as the action row (#21) -- this is also a real-money control.
+    expect(screen.getByRole("button", { name: /buy back in/i }).className).toMatch(/min-h-11/);
+
     fireEvent.click(screen.getByRole("button", { name: /buy back in/i }));
 
     expect(screen.getByTestId("bankroll-amount")).toHaveTextContent("$500");
     expect(screen.getByRole("button", { name: "Add $25 chip" })).toBeInTheDocument();
+  });
+});
+
+describe("insurance decision row meets the touch-target standard PR #21 established", () => {
+  // player1, player2, dealer up (ace), dealer hole -- stays in the insurance phase
+  // rather than auto-resolving, since the hole card isn't a ten-value.
+  function dealToInsurance(playerCards: [number, number], dealerHole: number, bet = 100) {
+    setDeck([playerCards[0], playerCards[1], 1, dealerHole]);
+    render(<GamePage />);
+    placeBetViaChips(bet);
+    flush();
+  }
+
+  test("Insurance and No insurance are 44px tall and share the action row's 16px gap", () => {
+    dealToInsurance([10, 6], 9);
+    expect(screen.getByText(/insurance — dealer shows an ace/i)).toBeInTheDocument();
+
+    const insuranceBtn = screen.getByRole("button", { name: "Insurance ($50)" });
+    const declineBtn = screen.getByRole("button", { name: "No insurance" });
+    expect(insuranceBtn.className).toMatch(/min-h-11/);
+    expect(declineBtn.className).toMatch(/min-h-11/);
+    expect(insuranceBtn.parentElement!.className).toMatch(/gap-4/);
+  });
+
+  test("Even money, offered only on a player blackjack, also meets the touch-target minimum", () => {
+    dealToInsurance([1, 13], 9);
+    expect(screen.getByRole("button", { name: "Even money" }).className).toMatch(/min-h-11/);
   });
 });
 

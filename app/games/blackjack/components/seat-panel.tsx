@@ -119,7 +119,7 @@ export default function SeatPanel({
 
       {phase === "result" && seat.bankroll <= 0 && (
         <button type="button" onClick={onResetBankroll}
-          className="bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold py-2 px-4 rounded-lg">
+          className="min-h-11 flex items-center bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold py-2 px-4 rounded-lg">
           Reset Bankroll
         </button>
       )}
