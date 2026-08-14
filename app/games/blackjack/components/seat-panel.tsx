@@ -1,9 +1,11 @@
 "use client"
 
-import type { Card, Seat, TablePhase } from "../lib/types"
+import type { Card, HouseRules, Seat, TablePhase } from "../lib/types"
 import PlayerHand from "./player-hand"
 import ActionArea from "./action-area"
 import BankrollTray from "./bankroll-tray"
+import ChipStack from "./chip-stack"
+import ResultBanner from "./result-banner"
 
 interface Actions {
   canHit: boolean
@@ -21,6 +23,9 @@ interface Props {
   isActiveSeat: boolean
   actions: Actions | null
   dealerUpCard?: Card
+  dealerHasBlackjack: boolean
+  houseRules: HouseRules
+  trueCount: number
   onPlaceBet: (amount: number) => void
   onHit: () => void
   onStand: () => void
@@ -31,12 +36,17 @@ interface Props {
   onDeclineInsurance: () => void
   onTakeEvenMoney: () => void
   onResetBankroll: () => void
+  onBuyBackIn: () => void
 }
 
+const SETTLE_VARIANT: Record<string, "win" | "loss" | "push"> = {
+  win: "win", blackjack: "win", "even-money": "win", loss: "loss", surrender: "loss", push: "push",
+};
+
 export default function SeatPanel({
-  seat, phase, isActiveSeat, actions, dealerUpCard,
+  seat, phase, isActiveSeat, actions, dealerUpCard, dealerHasBlackjack, houseRules, trueCount,
   onPlaceBet, onHit, onStand, onDouble, onSplit, onSurrender,
-  onTakeInsurance, onDeclineInsurance, onTakeEvenMoney, onResetBankroll,
+  onTakeInsurance, onDeclineInsurance, onTakeEvenMoney, onResetBankroll, onBuyBackIn,
 }: Props) {
   return (
     <div className={`bg-white/5 border rounded-2xl p-3 sm:p-4 flex flex-col items-center gap-3 ${isActiveSeat ? "border-yellow-500" : "border-white/10"}`}>
@@ -45,17 +55,23 @@ export default function SeatPanel({
         <BankrollTray bankroll={seat.bankroll} />
       </div>
 
-      {seat.hands.length > 0 && (
+      {seat.hands.length > 0 ? (
         <div className="flex flex-wrap gap-3 justify-center">
           {seat.hands.map((h, i) => (
-            <PlayerHand
-              key={h.id}
-              cards={h.cards}
-              title={seat.hands.length > 1 ? `Hand ${i + 1}` : seat.label}
-              active={isActiveSeat && seat.activeHandIndex === i && phase === "playerTurns"}
-            />
+            <div key={h.id} className="flex flex-col items-center gap-2">
+              <PlayerHand
+                cards={h.cards}
+                title={seat.hands.length > 1 ? `Hand ${i + 1}` : undefined}
+                active={isActiveSeat && seat.activeHandIndex === i && phase === "playerTurns"}
+              />
+              {/* Wager stays visible from deal through settlement, attributed to this hand's own column. */}
+              <ChipStack amount={h.bet} variant={h.result ? (SETTLE_VARIANT[h.result.result] ?? "neutral") : "neutral"} />
+              {h.result && <ResultBanner result={h.result} dealerHasBlackjack={dealerHasBlackjack} />}
+            </div>
           ))}
         </div>
+      ) : (
+        seat.pendingBet > 0 && <ChipStack amount={seat.pendingBet} />
       )}
 
       <ActionArea
@@ -64,9 +80,12 @@ export default function SeatPanel({
         isActiveSeat={isActiveSeat}
         actions={actions}
         dealerUpCard={dealerUpCard}
+        houseRules={houseRules}
+        trueCount={trueCount}
         onPlaceBet={onPlaceBet}
         onHit={onHit} onStand={onStand} onDouble={onDouble} onSplit={onSplit} onSurrender={onSurrender}
         onTakeInsurance={onTakeInsurance} onDeclineInsurance={onDeclineInsurance} onTakeEvenMoney={onTakeEvenMoney}
+        onBuyBackIn={onBuyBackIn}
       />
 
       {phase === "result" && seat.bankroll <= 0 && (

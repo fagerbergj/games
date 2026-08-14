@@ -249,7 +249,7 @@ describe("multi-seat: independent bets, turns, and settlement", () => {
     expect(seat1.hands[0].result?.result).toBe("loss");
     expect(seat1.hands[0].result?.amount).toBe(-100);
     expect(seat2.hands[0].result?.result).toBe("blackjack");
-    expect(seat2.hands[0].result?.amount).toBe(Math.round(25 * 1.5));
+    expect(seat2.hands[0].result?.amount).toBe(37.5); // exact half-dollar payout, no rounding
   });
 
   test("each seat's bankroll updates only by its own hand's result", () => {

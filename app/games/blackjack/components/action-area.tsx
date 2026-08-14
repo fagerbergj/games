@@ -2,10 +2,12 @@
 import BettingControls from "./betting-controls"
 import ActionButtons from "./action-buttons"
 import StrategyHint from "./strategy-hint"
-import ChipStack from "./chip-stack"
-import ResultBanner from "./result-banner"
+import InsuranceHint from "./insurance-hint"
 import { isBlackjack } from "../lib/engine"
-import type { Card, Seat, TablePhase } from "../lib/types"
+import { MIN_CHIP_DENOMINATION } from "../lib/chips"
+import { STARTING_BANKROLL } from "../lib/bankroll"
+import { formatMoney } from "../lib/money"
+import type { Card, HouseRules, Seat, TablePhase } from "../lib/types"
 
 interface Actions {
   canHit: boolean
@@ -23,6 +25,8 @@ interface Props {
   isActiveSeat: boolean;
   actions: Actions | null;
   dealerUpCard?: Card;
+  houseRules: HouseRules;
+  trueCount: number;
   onPlaceBet: (amount: number) => void;
   onHit: () => void;
   onStand: () => void;
@@ -32,24 +36,27 @@ interface Props {
   onTakeInsurance: (amount: number) => void;
   onDeclineInsurance: () => void;
   onTakeEvenMoney: () => void;
+  onBuyBackIn: () => void;
 }
-
-const SETTLE_VARIANT: Record<string, "win" | "loss" | "push"> = {
-  win: "win", blackjack: "win", "even-money": "win", loss: "loss", surrender: "loss", push: "push",
-};
 
 /** The one place a seat's controls live — swaps by phase so the felt underneath never moves. */
 export default function ActionArea({
-  seat, phase, isActiveSeat, actions, dealerUpCard,
+  seat, phase, isActiveSeat, actions, dealerUpCard, houseRules, trueCount,
   onPlaceBet, onHit, onStand, onDouble, onSplit, onSurrender,
-  onTakeInsurance, onDeclineInsurance, onTakeEvenMoney,
+  onTakeInsurance, onDeclineInsurance, onTakeEvenMoney, onBuyBackIn,
 }: Props) {
   if (phase === "betting") {
     if (seat.pendingBet > 0) {
+      return <p className="text-zinc-500 text-xs">Bet placed — waiting on the table</p>;
+    }
+    if (seat.bankroll < MIN_CHIP_DENOMINATION) {
       return (
         <div className="flex flex-col items-center gap-2">
-          <ChipStack amount={seat.pendingBet} />
-          <p className="text-zinc-500 text-xs">Bet placed — waiting on the table</p>
+          <p className="text-zinc-400 text-sm">You&rsquo;re out of chips</p>
+          <button type="button" onClick={onBuyBackIn}
+            className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold text-sm px-4 py-2 rounded-lg">
+            Buy back in ({formatMoney(STARTING_BANKROLL)})
+          </button>
         </div>
       );
     }
@@ -62,28 +69,31 @@ export default function ActionArea({
     if (seat.insurance !== null) {
       return (
         <p className="text-zinc-500 text-xs">
-          {seat.insurance.bet > 0 ? `Insured for $${seat.insurance.bet}` : "Declined insurance"} — waiting on the table
+          {seat.insurance.bet > 0 ? `Insured for ${formatMoney(seat.insurance.bet)}` : "Declined insurance"} — waiting on the table
         </p>
       );
     }
     return (
-      <div className="flex gap-2 flex-wrap justify-center">
-        <button type="button" onClick={() => onTakeInsurance((hand?.bet ?? 0) / 2)}
-          title="Side bet, up to half your wager, pays 2:1 if the dealer has blackjack"
-          className="bg-blue-700 hover:bg-blue-600 text-white text-sm px-3 py-2 rounded-lg">
-          Insurance (${(hand?.bet ?? 0) / 2})
-        </button>
-        {eligibleForEvenMoney && (
-          <button type="button" onClick={onTakeEvenMoney}
-            title="Lock in a guaranteed 1:1 payout on your blackjack instead of risking the dealer also having one"
-            className="bg-green-700 hover:bg-green-600 text-white text-sm px-3 py-2 rounded-lg">
-            Even money
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex gap-2 flex-wrap justify-center">
+          <button type="button" onClick={() => onTakeInsurance((hand?.bet ?? 0) / 2)}
+            title="Side bet, up to half your wager, pays 2:1 if the dealer has blackjack"
+            className="bg-blue-700 hover:bg-blue-600 text-white text-sm px-3 py-2 rounded-lg">
+            Insurance ({formatMoney((hand?.bet ?? 0) / 2)})
           </button>
-        )}
-        <button type="button" onClick={onDeclineInsurance}
-          className="bg-zinc-700 hover:bg-zinc-600 text-white text-sm px-3 py-2 rounded-lg">
-          No insurance
-        </button>
+          {eligibleForEvenMoney && (
+            <button type="button" onClick={onTakeEvenMoney}
+              title="Lock in a guaranteed 1:1 payout on your blackjack instead of risking the dealer also having one"
+              className="bg-green-700 hover:bg-green-600 text-white text-sm px-3 py-2 rounded-lg">
+              Even money
+            </button>
+          )}
+          <button type="button" onClick={onDeclineInsurance}
+            className="bg-zinc-700 hover:bg-zinc-600 text-white text-sm px-3 py-2 rounded-lg">
+            No insurance
+          </button>
+        </div>
+        <InsuranceHint trueCount={trueCount} />
       </div>
     );
   }
@@ -92,40 +102,29 @@ export default function ActionArea({
     const activeHand = seat.hands[seat.activeHandIndex];
     return (
       <div className="flex flex-col items-center gap-3">
-        <ChipStack amount={seat.hands.reduce((sum, h) => sum + h.bet, 0)} />
         <ActionButtons
           onHit={onHit} onStand={onStand} onDouble={onDouble} onSplit={onSplit} onSurrender={onSurrender}
           canDouble={actions.canDouble} canSurrender={actions.canSurrender}
           splitOffered={actions.splitOffered} canSplit={actions.canSplit} splitReason={actions.splitReason}
         />
-        {activeHand && dealerUpCard && <StrategyHint playerHand={activeHand.cards} dealerUpCard={dealerUpCard} />}
+        {activeHand && dealerUpCard && (
+          <StrategyHint
+            playerHand={activeHand.cards}
+            dealerUpCard={dealerUpCard}
+            rules={houseRules}
+            isSplitHand={activeHand.isSplitHand}
+          />
+        )}
       </div>
     );
   }
 
   if (phase === "dealerTurn") {
-    return (
-      <div className="flex flex-col items-center gap-3">
-        <ChipStack amount={seat.hands.reduce((sum, h) => sum + h.bet, 0)} />
-        {isActiveSeat && <p className="text-zinc-400 text-sm animate-pulse">Dealer is drawing&hellip;</p>}
-      </div>
-    );
+    return isActiveSeat ? <p className="text-zinc-400 text-sm animate-pulse">Dealer is drawing&hellip;</p> : null;
   }
 
-  if (phase === "result") {
-    return (
-      <div className="flex flex-col items-center gap-2">
-        {seat.hands.map(h => h.result && (
-          <div key={h.id} className="flex flex-col items-center gap-1">
-            <ChipStack amount={h.bet} variant={SETTLE_VARIANT[h.result.result] ?? "neutral"} />
-            <ResultBanner result={h.result} />
-          </div>
-        ))}
-        {seat.insurance && seat.insurance.bet > 0 && (
-          <p className="text-xs text-zinc-500">Insurance {seat.insurance.result === "win" ? "won" : "lost"}</p>
-        )}
-      </div>
-    );
+  if (phase === "result" && seat.insurance && seat.insurance.bet > 0) {
+    return <p className="text-xs text-zinc-500">Insurance {seat.insurance.result === "win" ? "won" : "lost"}</p>;
   }
 
   return null;

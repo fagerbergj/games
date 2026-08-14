@@ -1,4 +1,5 @@
 import { calculatePayout, updateBankroll } from "../lib/engine";
+import { DEFAULT_HOUSE_RULES } from "../lib/houseRules";
 import type { Card } from "../lib/types";
 
 function makeHand(ranks: number[]): Card[] {
@@ -28,6 +29,21 @@ describe("calculatePayout — player natural blackjack", () => {
     const player = makeHand([1, 10]);
     const dealer = makeHand([4, 6]);
     expect(calculatePayout(player, dealer, 250)).toEqual({ result: "blackjack", amount: 375 });
+  });
+});
+
+describe("calculatePayout — exact half-dollar payouts, no rounding", () => {
+  test("$25 natural at 3:2 → +37.5", () => {
+    const player = makeHand([1, 10]);
+    const dealer = makeHand([8, 6]);
+    expect(calculatePayout(player, dealer, 25)).toEqual({ result: "blackjack", amount: 37.5 });
+  });
+
+  test("$25 natural at 6:5 → +30", () => {
+    const player = makeHand([1, 10]);
+    const dealer = makeHand([8, 6]);
+    const rules = { ...DEFAULT_HOUSE_RULES, blackjackPayout: "6:5" as const };
+    expect(calculatePayout(player, dealer, 25, rules)).toEqual({ result: "blackjack", amount: 30 });
   });
 });
 

@@ -1,10 +1,13 @@
 "use client"
 import type { BlackjackResult } from "../lib/types"
+import { formatMoney } from "../lib/money"
 
 interface Props {
   result: BlackjackResult;
   bankroll?: number;
   onDealAgain?: () => void;
+  /** True when a "loss" is specifically a dealer natural, not just a higher dealer total. */
+  dealerHasBlackjack?: boolean;
 }
 
 const COPY: Record<BlackjackResult["result"], { label: string; color: string }> = {
@@ -17,15 +20,16 @@ const COPY: Record<BlackjackResult["result"], { label: string; color: string }> 
 };
 
 /** Slim inline result strip — never covers the felt or the final hands. */
-export default function ResultBanner({ result, bankroll, onDealAgain }: Props) {
+export default function ResultBanner({ result, bankroll, onDealAgain, dealerHasBlackjack }: Props) {
   const { label, color } = COPY[result.result];
-  const delta = result.amount > 0 ? `+$${result.amount}` : result.amount < 0 ? `-$${Math.abs(result.amount)}` : "Bet returned";
+  const displayLabel = result.result === "loss" && dealerHasBlackjack ? "Dealer Blackjack" : label;
+  const delta = result.amount > 0 ? `+${formatMoney(result.amount)}` : result.amount < 0 ? formatMoney(result.amount) : "Bet returned";
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-4 bg-zinc-900/90 border border-zinc-700 rounded-xl px-6 py-3 shadow-lg">
-      <span className={`text-xl font-bold ${color}`}>{label}</span>
+      <span className={`text-xl font-bold ${color}`}>{displayLabel}</span>
       <span className="text-zinc-300 font-semibold">{delta}</span>
-      {bankroll !== undefined && <span className="text-zinc-500 text-sm">Bankroll: ${bankroll}</span>}
+      {bankroll !== undefined && <span className="text-zinc-500 text-sm">Bankroll: {formatMoney(bankroll)}</span>}
       {onDealAgain && (
         <button
           type="button"

@@ -392,6 +392,18 @@ function resetSeatBankrollFn(state: BlackjackTableState, seatIndex: number): Bla
   return { ...state, seats };
 }
 
+/**
+ * Buy-back-in for a seat that's dropped below the smallest chip and can no longer
+ * bet at all. Only offered at the betting phase; also reshuffles the shared shoe,
+ * since a mid-round top-up would be an undeserved bailout.
+ */
+function buyBackInFn(state: BlackjackTableState, seatIndex: number, deckCount: number): BlackjackTableState {
+  if (state.phase !== "betting") return state;
+  const seats = state.seats.map((s, i) => (i === seatIndex ? { ...s, bankroll: STARTING_BANKROLL } : s));
+  saveSeatBankrolls(seats.map(s => s.bankroll));
+  return { ...state, seats, deck: createShoe(deckCount) };
+}
+
 // --- The hook ----------------------------------------------------------------
 
 /** Hook that manages a multi-seat blackjack table: N seats, one dealer, one continuing shoe. */
@@ -535,6 +547,12 @@ export function useBlackjack(initialSeatCount = 1) {
     setState(resetRound);
   }, []);
   const resetSeatBankroll = useCallback((seatIndex: number) => setState(s => resetSeatBankrollFn(s, seatIndex)), []);
+  const buyBackIn = useCallback((seatIndex: number) => {
+    setState(s => buyBackInFn(s, seatIndex, deckCount));
+    setRunningCountValue(0);
+    setLastCountedCard(undefined);
+    countedIds.current.clear();
+  }, [deckCount]);
 
   const decksLeft = computeDecksRemaining(state.deck.length);
   const trueCountValue = computeTrueCount(runningCountValue, decksLeft);
@@ -555,6 +573,7 @@ export function useBlackjack(initialSeatCount = 1) {
     takeEvenMoney: takeEvenMoneyAction,
     resetRound: resetRoundAction,
     resetSeatBankroll,
+    buyBackIn,
     actions: getActiveHandActions(state),
     deckCount,
     setDeckCount,

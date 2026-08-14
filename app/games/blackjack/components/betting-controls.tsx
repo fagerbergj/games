@@ -3,6 +3,7 @@ import { useState, useCallback, useMemo } from "react"
 import Chip from "./chip"
 import ChipStack from "./chip-stack"
 import { CHIP_DENOMINATIONS } from "../lib/chips"
+import { formatMoney } from "../lib/money"
 
 interface Props {
   bankroll: number;
@@ -29,7 +30,7 @@ export default function BettingControls({ bankroll, onBet, confirmLabel = "Deal"
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <div aria-live="polite" className="sr-only">Current wager ${wager}</div>
+      <div aria-live="polite" className="sr-only">Current wager {formatMoney(wager)}</div>
       <ChipStack amount={wager} emptyLabel="Place bet" />
 
       <div className="flex gap-2 flex-wrap justify-center">
