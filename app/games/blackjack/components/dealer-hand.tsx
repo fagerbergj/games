@@ -1,5 +1,6 @@
 "use client"
 import Card from "./card"
+import CardGhost from "./card-ghost"
 import { calculateHandValue } from "../lib/engine"
 import type { Card as GameCard } from "../lib/types"
 
@@ -9,22 +10,22 @@ interface Props {
 
 export default function DealerHand({ cards }: Props) {
   const revealed = cards.filter(c => c.faceUp)
+  const hasHiddenCard = cards.some(c => !c.faceUp)
+  // Only sum the up-card while the hole card is hidden -- never leak its value.
   const total = revealed.length > 0 ? calculateHandValue(revealed) : 0
-  const isBust = total > 21
+  const isBust = !hasHiddenCard && total > 21
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <h3 className="text-lg font-semibold text-white">Dealer</h3>
-      <div className="flex -space-x-8">
-        {cards.map(c => (
-          <Card key={c.id} card={c} />
-        ))}
+    <div data-testid="dealer-zone" className="flex flex-col items-center gap-2">
+      <h3 className="text-sm font-semibold tracking-wide text-white/90 uppercase">Dealer</h3>
+      <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 min-h-[5rem] sm:min-h-[7rem] items-center">
+        {cards.length > 0
+          ? cards.map(c => <Card key={c.id} card={c} />)
+          : <><CardGhost /><CardGhost /></>}
       </div>
-      {revealed.length > 0 && (
-        <span className={`text-2xl font-bold ${isBust ? "text-red-400" : "text-zinc-100"}`}>
-          {total}
-        </span>
-      )}
+      <span className={`text-xl font-bold h-7 ${isBust ? "text-red-400" : "text-zinc-100"}`}>
+        {cards.length === 0 ? " " : hasHiddenCard ? `${total} + ?` : total}
+      </span>
     </div>
   )
 }

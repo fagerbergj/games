@@ -1,6 +1,7 @@
 "use client"
 import { calculateHandValue } from "../lib/engine"
 import Card from "./card"
+import CardGhost from "./card-ghost"
 import type { Card as GameCard } from "../lib/types"
 
 interface Props {
@@ -12,18 +13,16 @@ export default function PlayerHand({ cards }: Props) {
   const isBust = total > 21
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <h3 className="text-lg font-semibold text-white">Your Hand</h3>
-      <div className="flex -space-x-8">
-        {cards.map(c => (
-          <Card key={c.id} card={c} />
-        ))}
+    <div data-testid="player-zone" className="flex flex-col items-center gap-2">
+      <h3 className="text-sm font-semibold tracking-wide text-white/90 uppercase">Your Hand</h3>
+      <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 min-h-[5rem] sm:min-h-[7rem] items-center">
+        {cards.length > 0
+          ? cards.map(c => <Card key={c.id} card={c} />)
+          : <><CardGhost /><CardGhost /></>}
       </div>
-      {cards.length > 0 && (
-        <span className={`text-2xl font-bold ${isBust ? "text-red-400" : "text-zinc-100"}`}>
-          {total}
-        </span>
-      )}
+      <span className={`text-xl font-bold h-7 ${isBust ? "text-red-400" : "text-zinc-100"}`}>
+        {cards.length > 0 ? total : " "}
+      </span>
     </div>
   )
 }

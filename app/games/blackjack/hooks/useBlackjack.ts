@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   shuffledDeck, drawCard as engineDraw, isBlackjack, calculateHandValue,
   dealerDraw as engineDealerDraw, updateBankroll, calculatePayout,
@@ -8,6 +8,10 @@ import type { Card, BlackjackState, GamePhase } from "../lib/types";
 
 const STORAGE_KEY = "blackjack_bankroll";
 
+// Pace of the dealer's card-by-card reveal (item 7). 500-700ms reads as a
+// deliberate deal without dragging; tune here if it feels off.
+const REVEAL_DELAY_MS = 600;
+
 interface Outcome {
   playerHand: Card[];
   dealerHand: Card[];
@@ -16,6 +20,8 @@ interface Outcome {
   amount: number;
 }
 
+// Pure — draws the dealer's full final hand and computes payout. Does not
+// touch React state; the reveal effect decides how to unveil it over time.
 function computeResult(
   playerCards: readonly Card[],
   deck: readonly Card[],
@@ -35,54 +41,48 @@ function computeResult(
   };
 }
 
-function resolveTurn(prev: BlackjackState | null): BlackjackState | null {
-  if (!prev) return null;
-  const flipped: Card[] = [prev.dealerHand[0], { ...prev.dealerHand[1], faceUp: true }];
-  const outcome         = computeResult(prev.playerHand, prev.deck, flipped, prev.bet);
-
-  return {
-    ...prev,
-    playerHand: outcome.playerHand,
-    dealerHand: outcome.dealerHand.map(c => ({ ...c, faceUp: true })),
-    deck: outcome.deck,
-    phase: "result" as GamePhase,
-    bankroll: updateBankroll(prev.bankroll, outcome.amount),
-    result: { result: outcome.resultType, amount: outcome.amount },
-  };
+// Flips the hole card and hands control to the dealer's turn. The reveal
+// effect (keyed on phase === "dealerTurn") takes it from here.
+function flipHoleAndEnterDealerTurn(prev: BlackjackState): BlackjackState {
+  const flippedHole: Card = { ...prev.dealerHand[1], faceUp: true };
+  return { ...prev, dealerHand: [prev.dealerHand[0], flippedHole], phase: "dealerTurn" as GamePhase };
 }
 
 // Called after placeBet to peek at hole card and check for instant blackjack.
 function peekResolve(prev: BlackjackState | null): BlackjackState | null {
   if (!prev) return prev;
 
-  const flipped: Card[] = [prev.dealerHand[0], { ...prev.dealerHand[1], faceUp: true }];
-  const pj    = isBlackjack(prev.playerHand);
-  const dj    = isBlackjack(flipped);
+  const flippedHole: Card = { ...prev.dealerHand[1], faceUp: true };
+  const flipped: Card[] = [prev.dealerHand[0], flippedHole];
+  const pj = isBlackjack(prev.playerHand);
+  const dj = isBlackjack(flipped);
 
-  // Either side has a natural blackjack — hand ends now; resolveTurn's own
-  // payout math already covers win/push/loss for every pj/dj combination.
+  // Either side has a natural blackjack — hand ends now, via the same
+  // reveal path stand() uses (dealer may still owe a card per house rules).
   if (pj || dj) {
-    return resolveTurn(prev);
+    return { ...prev, dealerHand: flipped, phase: "dealerTurn" as GamePhase };
   }
 
   // Neither BJ — hole card stays hidden, player acts next.
   return { ...prev, phase: "playerTurn" as GamePhase };
 }
 
-// Called after hit() to check if the new hand busts.
-function checkBust(
-  prev: BlackjackState | null,
-): BlackjackState | null {
+// Called after hit() to check if the new hand busts or hits 21.
+function checkBust(prev: BlackjackState | null): BlackjackState | null {
   if (!prev || prev.phase !== "playerTurn") return prev;
   const val = calculateHandValue(prev.playerHand);
   if (val > 21) {
-    // Bust — dealer flips but doesn't necessarily play out.
-    const flipped: Card[] = [prev.dealerHand[0], { ...prev.dealerHand[1], faceUp: true }];
-    return { ...prev, dealerHand: flipped.map(c => ({ ...c, faceUp: true })), phase: "result" as GamePhase, bankroll: updateBankroll(prev.bankroll, -prev.bet), result: { result: "loss" as const, amount: -prev.bet } };
+    // Bust ends the hand immediately — dealer doesn't draw, just flips.
+    const flippedHole: Card = { ...prev.dealerHand[1], faceUp: true };
+    return {
+      ...prev,
+      dealerHand: [prev.dealerHand[0], flippedHole],
+      phase: "result" as GamePhase,
+      bankroll: updateBankroll(prev.bankroll, -prev.bet),
+      result: { result: "loss" as const, amount: -prev.bet },
+    };
   }
-  if (val === 21) {
-    return resolveTurn(prev);
-  }
+  if (val === 21) return flipHoleAndEnterDealerTurn(prev);
   return prev; // No change.
 }
 
@@ -93,13 +93,59 @@ export function useBlackjack() {
     phase: "betting" as GamePhase, bet: 0, bankroll: getBankroll(),
   }));
 
+  // Identifies the "live" hand. Reveal timers compare against this before
+  // touching state, so a reset/new-hand mid-reveal can't resurrect a stale
+  // hand's cards or payout even if the effect cleanup below were somehow
+  // skipped.
+  const handIdRef = useRef(0);
+
   // Persist bankroll after every resolved outcome.
   useEffect(() => {
     if (state?.phase === "result") saveBankroll(state.bankroll);
   }, [state?.phase, state?.bankroll]);
 
-  const peek = useCallback((prev: BlackjackState | null): BlackjackState | null => peekResolve(prev), []);
-  const chkBust = useCallback((prev: BlackjackState | null): BlackjackState | null => checkBust(prev), []);
+  // Draws the dealer's finished hand card by card, then applies the payout.
+  // Fires once per hand entering dealerTurn (keyed on the phase value, not
+  // the whole state, so the reveal's own ticks don't re-trigger it). Cleanup
+  // clears any un-fired timers on unmount or when phase moves on for any
+  // reason (new hand, reset) — that's what makes it cancel-safe.
+  useEffect(() => {
+    if (!state || state.phase !== "dealerTurn") return;
+
+    const myHandId = handIdRef.current;
+    const outcome = computeResult(state.playerHand, state.deck, state.dealerHand, state.bet);
+    const extraCards = outcome.dealerHand.slice(state.dealerHand.length);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    extraCards.forEach((card, i) => {
+      timers.push(setTimeout(() => {
+        if (handIdRef.current !== myHandId) return;
+        setState(s => (s ? { ...s, dealerHand: [...s.dealerHand, card] } : s));
+      }, REVEAL_DELAY_MS * (i + 1)));
+    });
+
+    // Guaranteed to reach "result" even if a step is somehow skipped, since
+    // every tick is its own fixed-delay timer rather than a chain where one
+    // dropped callback could strand the next.
+    timers.push(setTimeout(() => {
+      if (handIdRef.current !== myHandId) return;
+      setState(s => {
+        if (!s) return s;
+        return {
+          ...s,
+          playerHand: outcome.playerHand,
+          dealerHand: outcome.dealerHand,
+          deck: outcome.deck,
+          phase: "result" as GamePhase,
+          bankroll: updateBankroll(s.bankroll, outcome.amount),
+          result: { result: outcome.resultType, amount: outcome.amount },
+        };
+      });
+    }, REVEAL_DELAY_MS * (extraCards.length + 1)));
+
+    return () => timers.forEach(clearTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately keyed on phase alone: the reveal's own ticks change dealerHand but must not re-trigger this effect
+  }, [state?.phase]);
 
   // --- Actions ---
 
@@ -130,8 +176,8 @@ export function useBlackjack() {
 
     // Peek at hole card: check for instant blackjack or just flip it.
     // Deferring to separate render from the deal allows React to paint the initial cards before revealing the hole card, avoiding a jarring transition when dealer has blackjack.
-    setTimeout(() => setState(peek), 0);
-  }, [peek]);
+    setTimeout(() => setState(peekResolve), 0);
+  }, []);
 
   /** Draw one more card for the player. Bust/21 resolves automatically. */
   const hit = useCallback(() => {
@@ -143,16 +189,20 @@ export function useBlackjack() {
     });
 
     // Check for bust / auto-stand after card lands.
-    setTimeout(() => setState(chkBust), 0);
-  }, [chkBust]);
-
-  /** Stop drawing — dealer plays out hand, payout calculated. */
-  const stand = useCallback(() => {
-    setState(resolveTurn);
+    setTimeout(() => setState(checkBust), 0);
   }, []);
 
-  /** Reset to betting screen (keep bankroll). */
+  /** Stop drawing — dealer plays out hand, revealed one card at a time. */
+  const stand = useCallback(() => {
+    setState(prev => {
+      if (!prev || prev.phase !== "playerTurn") return prev;
+      return flipHoleAndEnterDealerTurn(prev);
+    });
+  }, []);
+
+  /** Reset to betting screen (keep bankroll). Cancels any in-flight reveal. */
   const resetGame = useCallback(() => {
+    handIdRef.current += 1;
     setState(prev => ({
       playerHand: [], dealerHand: [], deck: [],
       phase: "betting" as GamePhase, bet: 0, bankroll: prev?.bankroll ?? getBankroll(),
@@ -161,6 +211,7 @@ export function useBlackjack() {
 
   /** Reset bankroll to starting stack (500) and show betting screen. */
   const resetBankroll = useCallback(() => {
+    handIdRef.current += 1;
     try { localStorage.setItem(STORAGE_KEY, "500"); } catch { /* noop */ }
     setState({
       playerHand: [], dealerHand: [], deck: [],
