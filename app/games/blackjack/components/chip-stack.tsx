@@ -1,12 +1,15 @@
 "use client"
 import Chip from "./chip"
 import { decomposeToChips } from "../lib/chips"
+import { formatMoney } from "../lib/money"
 
 interface Props {
   amount: number;
   /** Visual settle state once a hand resolves. */
   variant?: "neutral" | "win" | "loss" | "push";
   emptyLabel?: string;
+  /** Show the wager as a number too, where no other label states it. */
+  showTotal?: boolean;
 }
 
 const VARIANT_CLASSES: Record<NonNullable<Props["variant"]>, string> = {
@@ -17,7 +20,7 @@ const VARIANT_CLASSES: Record<NonNullable<Props["variant"]>, string> = {
 };
 
 /** Fanned stack of chips standing in for a wager, e.g. in the betting circle. */
-export default function ChipStack({ amount, variant = "neutral", emptyLabel }: Props) {
+export default function ChipStack({ amount, variant = "neutral", emptyLabel, showTotal = false }: Props) {
   const chips = decomposeToChips(amount);
 
   if (chips.length === 0) {
@@ -29,14 +32,20 @@ export default function ChipStack({ amount, variant = "neutral", emptyLabel }: P
   }
 
   return (
-    <div className={`relative flex items-end ${VARIANT_CLASSES[variant]}`} style={{ height: "4rem" }}>
-      {chips.slice(0, 6).map((denom, i) => (
-        <div key={i} className="relative" style={{ marginLeft: i === 0 ? 0 : "-2.75rem", zIndex: i }}>
-          <Chip denomination={denom} size="sm" />
-        </div>
-      ))}
-      {chips.length > 6 && (
-        <span className="ml-2 text-xs text-zinc-300 self-center">+{chips.length - 6}</span>
+    <div className="flex items-center gap-2">
+      <div className={`relative flex items-end ${VARIANT_CLASSES[variant]}`} style={{ height: "4rem" }}>
+        {chips.slice(0, 6).map((denom, i) => (
+          // Offset must stay under the sm chip's 2.5rem width or each chip fully hides the last.
+          <div key={i} className="relative" style={{ marginLeft: i === 0 ? 0 : "-1.6rem", zIndex: i }}>
+            <Chip denomination={denom} size="sm" />
+          </div>
+        ))}
+        {chips.length > 6 && (
+          <span className="ml-2 text-xs text-zinc-300 self-center">+{chips.length - 6}</span>
+        )}
+      </div>
+      {showTotal && (
+        <span className="text-sm font-semibold text-yellow-300 tabular-nums">{formatMoney(amount)}</span>
       )}
     </div>
   );
