@@ -16,12 +16,12 @@ export default function StrategyHint({ playerHand, dealerUpCard, rules, isSplitH
   const advice = getBookAdvice(playerHand, dealerUpCard, rules, isSplitHand)
 
   return (
-    <div className="max-w-md text-center text-xs bg-black/30 border border-white/10 rounded-lg px-3 py-2">
+    <div className="max-w-xl text-center text-xs bg-black/30 border border-white/10 rounded-lg px-3 py-1.5">
       <span className="font-semibold text-yellow-400 uppercase tracking-wide">
         Book says: {advice.book}
         {advice.ruleBlocked && ` (not available at this table — ${advice.recommended} instead)`}
       </span>
-      <p className="mt-1 text-zinc-300 normal-case">{advice.reason}</p>
+      <p className="mt-0.5 text-zinc-300 normal-case">{advice.reason}</p>
     </div>
   )
 }

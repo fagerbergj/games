@@ -3,6 +3,7 @@ import BettingControls from "./betting-controls"
 import ActionButtons from "./action-buttons"
 import StrategyHint from "./strategy-hint"
 import InsuranceHint from "./insurance-hint"
+import CountTrigger from "./count-trigger"
 import { isBlackjack } from "../lib/engine"
 import { MIN_CHIP_DENOMINATION } from "../lib/chips"
 import { STARTING_BANKROLL } from "../lib/bankroll"
@@ -37,6 +38,15 @@ interface Props {
   onDeclineInsurance: () => void;
   onTakeEvenMoney: () => void;
   onBuyBackIn: () => void;
+  runningCount: number;
+  decksRemaining: number;
+  lastCountedCard?: { card: Card; delta: number };
+  countVisible: boolean;
+  onToggleCountVisible: () => void;
+  justReshuffled: boolean;
+  countOpen: boolean;
+  onToggleCount: () => void;
+  onCloseCount: () => void;
 }
 
 /** The one place a seat's controls live — swaps by phase so the felt underneath never moves. */
@@ -44,20 +54,47 @@ export default function ActionArea({
   seat, phase, isActiveSeat, actions, dealerUpCard, houseRules, trueCount,
   onPlaceBet, onHit, onStand, onDouble, onSplit, onSurrender,
   onTakeInsurance, onDeclineInsurance, onTakeEvenMoney, onBuyBackIn,
+  runningCount, decksRemaining, lastCountedCard, countVisible, onToggleCountVisible, justReshuffled,
+  countOpen, onToggleCount, onCloseCount,
 }: Props) {
+  // The count matters where a player is about to act on it: sizing a bet, or playing a hand.
+  const showCount = phase === "betting" || (phase === "playerTurns" && isActiveSeat);
+  const countTrigger = showCount ? (
+    <CountTrigger
+      open={countOpen}
+      onToggle={onToggleCount}
+      onClose={onCloseCount}
+      runningCount={runningCount}
+      trueCountValue={trueCount}
+      decksLeft={decksRemaining}
+      lastCountedCard={lastCountedCard}
+      visible={countVisible}
+      onToggleVisible={onToggleCountVisible}
+      justReshuffled={justReshuffled}
+    />
+  ) : null;
+
   if (phase === "betting") {
     if (seat.bankroll < MIN_CHIP_DENOMINATION) {
       return (
         <div className="flex flex-col items-center gap-2">
           <p className="text-zinc-400 text-sm">You&rsquo;re out of chips</p>
-          <button type="button" onClick={onBuyBackIn}
-            className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold text-sm px-4 py-2 rounded-lg">
-            Buy back in ({formatMoney(STARTING_BANKROLL)})
-          </button>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={onBuyBackIn}
+              className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold text-sm px-4 py-2 rounded-lg">
+              Buy back in ({formatMoney(STARTING_BANKROLL)})
+            </button>
+            {countTrigger}
+          </div>
         </div>
       );
     }
-    return <BettingControls bankroll={seat.bankroll} pendingBet={seat.pendingBet} lastWager={seat.lastWager} onBet={onPlaceBet} />;
+    return (
+      <BettingControls
+        bankroll={seat.bankroll} pendingBet={seat.pendingBet} lastWager={seat.lastWager} onBet={onPlaceBet}
+        countTrigger={countTrigger}
+      />
+    );
   }
 
   if (phase === "insurance") {
@@ -98,11 +135,12 @@ export default function ActionArea({
   if (phase === "playerTurns" && isActiveSeat && actions) {
     const activeHand = seat.hands[seat.activeHandIndex];
     return (
-      <div className="flex flex-col items-center gap-3">
+      <div className="flex flex-col items-center gap-2">
         <ActionButtons
           onHit={onHit} onStand={onStand} onDouble={onDouble} onSplit={onSplit} onSurrender={onSurrender}
           canDouble={actions.canDouble} canSurrender={actions.canSurrender}
           splitOffered={actions.splitOffered} canSplit={actions.canSplit} splitReason={actions.splitReason}
+          countTrigger={countTrigger}
         />
         {activeHand && dealerUpCard && (
           <StrategyHint

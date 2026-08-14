@@ -101,11 +101,14 @@ export default function RulesPanel({ rules, seatCount, deckCount, onRulesChange,
             onClick={requestClose}
             aria-hidden
           />
+          {/* Fixed + viewport-centered so the dialog stays fully on screen no matter how far
+              the page is scrolled -- an absolute position anchored to the felt is not. */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
           <div
             ref={panelRef}
             role="dialog"
             aria-labelledby={`${uid}-title`}
-            className="absolute z-50 inset-x-4 top-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[26rem] bg-zinc-900 border border-zinc-800 rounded-xl p-3 shadow-2xl"
+            className="pointer-events-auto w-full sm:w-[26rem] max-h-[calc(100vh-2rem)] overflow-y-auto bg-zinc-900 border border-zinc-800 rounded-xl p-3 shadow-2xl"
           >
             <div className="flex items-center justify-between gap-3 mb-2">
               <h2 id={`${uid}-title`} className="text-zinc-100 font-bold text-sm">Table Settings</h2>
@@ -211,18 +214,6 @@ export default function RulesPanel({ rules, seatCount, deckCount, onRulesChange,
                     <option value="H17">H17 (hits)</option>
                   </select>
                 </Field>
-
-                <Field id="dealerPeek">
-                  <select
-                    value={rules.dealerPeek}
-                    onChange={e => set("dealerPeek", e.target.value as HouseRules["dealerPeek"])}
-                    className={selectClass}
-                  >
-                    <option value="peek">Peek</option>
-                    <option value="noPeek">No peek</option>
-                    <option value="enhc">ENHC (no hole card)</option>
-                  </select>
-                </Field>
               </div>
 
               <div
@@ -279,6 +270,18 @@ export default function RulesPanel({ rules, seatCount, deckCount, onRulesChange,
                 aria-labelledby={`${uid}-tab-surrender`}
                 hidden={tab !== "surrender"}
               >
+                <Field id="dealerPeek">
+                  <select
+                    value={rules.dealerPeek}
+                    onChange={e => set("dealerPeek", e.target.value as HouseRules["dealerPeek"])}
+                    className={selectClass}
+                  >
+                    <option value="peek">Peek</option>
+                    <option value="noPeek">No peek</option>
+                    <option value="enhc">ENHC (no hole card)</option>
+                  </select>
+                </Field>
+
                 <Field id="surrender">
                   <select
                     value={rules.surrender}
@@ -300,6 +303,7 @@ export default function RulesPanel({ rules, seatCount, deckCount, onRulesChange,
                 </Field>
               </div>
             </div>
+          </div>
           </div>
         </>
       )}
