@@ -74,6 +74,8 @@ export interface Seat {
   evenMoneyTaken: boolean;
   /** True once this seat has no more hands left to act on this round. */
   done: boolean;
+  /** What this seat wagered at last deal — survives resetRound so the next betting screen can prefill it. */
+  lastWager: number;
 }
 
 export type TablePhase =

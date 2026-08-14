@@ -16,7 +16,7 @@ export default function CountPanel({
   runningCount, trueCountValue, decksLeft, lastCountedCard, visible, onToggle, justReshuffled,
 }: Props) {
   return (
-    <div className="text-xs bg-black/30 border border-white/10 rounded-lg px-3 py-2 w-full max-w-xs">
+    <div className="text-xs bg-zinc-900/95 border border-white/10 rounded-lg px-3 py-2 w-full max-w-xs shadow-2xl">
       <div className="flex items-center justify-between gap-3">
         <span className="text-zinc-400 font-semibold">Card count (Hi-Lo)</span>
         <button type="button" onClick={onToggle} className="text-zinc-400 hover:text-zinc-200 underline">

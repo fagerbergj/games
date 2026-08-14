@@ -226,6 +226,7 @@ export function createSeat(id: string, label: string, bankroll: number): Seat {
     insurance: null,
     evenMoneyTaken: false,
     done: false,
+    lastWager: 0,
   };
 }
 
