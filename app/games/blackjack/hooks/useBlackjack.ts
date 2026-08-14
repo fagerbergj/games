@@ -59,17 +59,14 @@ function peekResolve(prev: BlackjackState | null): BlackjackState | null {
   const pj    = isBlackjack(prev.playerHand);
   const dj    = isBlackjack(flipped);
 
-  if (pj && dj) {
-    return { ...prev, dealerHand: flipped.map(c => ({ ...c, faceUp: true })), phase: "result" as GamePhase, result: { result: "push", amount: 0 } };
-  }
-
-  // Player has blackjack — dealer plays out.
-  if (pj && !dj) {
+  // Either side has a natural blackjack — hand ends now; resolveTurn's own
+  // payout math already covers win/push/loss for every pj/dj combination.
+  if (pj || dj) {
     return resolveTurn(prev);
   }
 
-  // Neither BJ — just flip hole card for display. Normal player turn.
-  return { ...prev, dealerHand: [flipped[0], { ...flipped[1], faceUp: true }] };
+  // Neither BJ — hole card stays hidden, player acts next.
+  return { ...prev, phase: "playerTurn" as GamePhase };
 }
 
 // Called after hit() to check if the new hand busts.
@@ -109,7 +106,8 @@ export function useBlackjack() {
   /** User confirms a bet. Deals cards and checks for instant blackjack. */
   const placeBet = useCallback((amount: number) => {
     setState(prev => {
-      if (!prev || prev.phase !== "betting") return null;
+      if (!prev) return null;
+      if (prev.phase !== "betting") return prev;
       const bet = Math.min(Math.max(1, Math.floor(amount)), prev.bankroll);
       if (bet <= 0) return prev;
 
@@ -126,6 +124,7 @@ export function useBlackjack() {
         playerHand: [pc1.card, pc2.card].map(c => ({ ...c, faceUp: true })),
         dealerHand: [{ ...dc1Up.card, faceUp: true }, { ...dc2Down.card, faceUp: false }],
         bet,
+        phase: "playerTurn" as GamePhase,
       };
     });
 
@@ -153,7 +152,12 @@ export function useBlackjack() {
   }, []);
 
   /** Reset to betting screen (keep bankroll). */
-  const resetGame = useCallback(() => setState(null), []);
+  const resetGame = useCallback(() => {
+    setState(prev => ({
+      playerHand: [], dealerHand: [], deck: [],
+      phase: "betting" as GamePhase, bet: 0, bankroll: prev?.bankroll ?? getBankroll(),
+    }));
+  }, []);
 
   /** Reset bankroll to starting stack (500) and show betting screen. */
   const resetBankroll = useCallback(() => {
