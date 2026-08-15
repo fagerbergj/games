@@ -55,21 +55,21 @@ describe("canSplit — pair detection and the split cap", () => {
   });
 });
 
-describe("splitHand — deals one fresh card to each half", () => {
-  test("splits into two one-card-plus-one-draw hands sharing the original bet", () => {
+describe("splitHand — deals the second card only to the hand about to be played", () => {
+  test("hand A gets the fresh draw, hand B waits with just its original card", () => {
     const original = createHand([card(8, "a"), card(8, "b")], 100);
     const deck = [card(3, "d1"), card(9, "d2"), card(2, "d3")];
 
     const { hands: [handA, handB], deck: remaining } = splitHand(original, deck);
 
     expect(handA.cards.map(c => c.id)).toEqual(["a", "d1"]);
-    expect(handB.cards.map(c => c.id)).toEqual(["b", "d2"]);
+    expect(handB.cards.map(c => c.id)).toEqual(["b"]);
     expect(handA.bet).toBe(100);
     expect(handB.bet).toBe(100);
     expect(handA.isSplitHand).toBe(true);
     expect(handB.isSplitHand).toBe(true);
     expect(handA.isSplitAces).toBe(false);
-    expect(remaining).toEqual([card(2, "d3")]);
+    expect(remaining).toEqual([card(9, "d2"), card(2, "d3")]);
   });
 
   test("splitting a pair of aces flags both hands isSplitAces", () => {
@@ -112,13 +112,14 @@ describe("a 21 from a split hand pays 1:1, never the blackjack bonus", () => {
 /* ------------------------------------------------------------------ */
 
 describe("split aces one-card rule", () => {
-  test("splitHand always deals exactly one card per new hand regardless of the toggle", () => {
-    // The toggle is enforced by the caller (freezing the hand at "stood"); the raw
-    // split always deals one card — this documents that division of responsibility.
+  test("splitHand itself is agnostic to the toggle — it only ever deals hand A's card", () => {
+    // The one-card rule (dealing hand B's card immediately, then freezing both at
+    // "stood") is enforced by the caller, not by splitHand -- this documents that
+    // division of responsibility.
     const original = createHand([card(1, "a"), card(1, "b")], 50);
     const { hands: [handA, handB] } = splitHand(original, [card(9), card(4)]);
     expect(handA.cards).toHaveLength(2);
-    expect(handB.cards).toHaveLength(2);
+    expect(handB.cards).toHaveLength(1);
   });
 
   test("with the toggle off, a split-aces hand can still be evaluated as a normal hittable hand", () => {

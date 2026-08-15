@@ -231,24 +231,25 @@ export function createSeat(id: string, label: string, bankroll: number): Seat {
 }
 
 /**
- * Split a two-card pair into two one-card hands, then deal each its second card —
- * mirrors the physical deal. Split aces are flagged so callers can apply the
- * one-card rule; caller is responsible for validating canSplit first.
+ * Split a two-card pair into two one-card hands. Only the first hand (the one
+ * about to be played) gets its second card here, mirroring the physical deal —
+ * the second hand's card isn't dealt until play moves to it. Split aces are
+ * flagged so callers can apply the one-card rule; caller is responsible for
+ * validating canSplit first.
  */
 export function splitHand(hand: Hand, deck: Card[]): { hands: [Hand, Hand]; deck: Card[] } {
   const [cardA, cardB] = hand.cards;
-  const draw1 = drawCard(deck);
-  const draw2 = drawCard(draw1.remaining);
+  const draw = drawCard(deck);
   const isAceSplit = cardA.rank === 1;
 
-  const handA = createHand([cardA, draw1.card], hand.bet, {
+  const handA = createHand([cardA, draw.card], hand.bet, {
     id: `${hand.id}-a`, isSplitHand: true, isSplitAces: isAceSplit,
   });
-  const handB = createHand([cardB, draw2.card], hand.bet, {
+  const handB = createHand([cardB], hand.bet, {
     id: `${hand.id}-b`, isSplitHand: true, isSplitAces: isAceSplit,
   });
 
-  return { hands: [handA, handB], deck: draw2.remaining };
+  return { hands: [handA, handB], deck: draw.remaining };
 }
 
 /** Resolve one hand's outcome (surrender is already resolved and just passed through). */

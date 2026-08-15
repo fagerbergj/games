@@ -36,7 +36,8 @@ afterEach(() => {
 
 describe("split mechanics via the hook", () => {
   test("splitting a pair deducts a second bet from the bankroll and creates two hands", () => {
-    // player [8,8], dealer up=2 hole=3=5 (won't peek/BJ). split draws: 4 (hand A), 5 (hand B).
+    // player [8,8], dealer up=2 hole=3=5 (won't peek/BJ). split draws hand A's card (4);
+    // hand B stays a single card until hand A is done, then draws its own (5).
     setDeck([8, 8, 2, 3, 4, 5]);
     const { result } = renderHook(() => useBlackjack(1));
     const startBankroll = result.current.state.seats[0].bankroll;
@@ -46,15 +47,19 @@ describe("split mechanics via the hook", () => {
 
     act(() => { result.current.split(); });
 
-    const seat = result.current.state.seats[0];
+    let seat = result.current.state.seats[0];
     expect(seat.hands).toHaveLength(2);
     expect(seat.hands[0].cards.map(c => c.rank)).toEqual([8, 4]);
-    expect(seat.hands[1].cards.map(c => c.rank)).toEqual([8, 5]);
+    expect(seat.hands[1].cards.map(c => c.rank)).toEqual([8]); // not dealt until it's on the clock
     expect(seat.hands[0].bet).toBe(100);
     expect(seat.hands[1].bet).toBe(100);
     // Bankroll itself doesn't move until settlement, but the funds committed this
     // round (100 + 100) must not exceed what the seat actually has.
     expect(seat.bankroll).toBe(startBankroll);
+
+    act(() => { result.current.stand(); }); // hand A done -> hand B is dealt its second card
+    seat = result.current.state.seats[0];
+    expect(seat.hands[1].cards.map(c => c.rank)).toEqual([8, 5]);
   });
 
   test("re-splitting up to the default cap of 3 splits produces 4 hands", () => {
@@ -75,7 +80,7 @@ describe("split mechanics via the hook", () => {
   test("the split cap (default 3) is enforced — a 4th split attempt is rejected", () => {
     // Every split keeps drawing an 8 into the hand being acted on, so it stays a
     // splittable pair right up to the cap -- isolates "cap reached" from "not a pair".
-    setDeck([8, 8, 2, 3, 8, 7, 8, 7, 8, 7]);
+    setDeck([8, 8, 2, 3, 8, 8, 8]);
     const { result } = renderHook(() => useBlackjack(1));
 
     act(() => { result.current.placeBet(0, 25); result.current.startRound(); });
