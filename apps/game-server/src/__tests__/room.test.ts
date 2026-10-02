@@ -25,7 +25,7 @@ function player(room: Room, name: string, token?: string) {
   return {
     token: tok, send, inbox, states,
     snap: (): RoomSnapshot => states().at(-1)!,
-    do: (msg: ClientMessage) => room.handle(tok, msg),
+    do: (msg: ClientMessage) => room.handle(tok, msg, send),
   };
 }
 
@@ -177,6 +177,16 @@ describe("reconnect", () => {
     expect(again.snap().slots[0]?.connected).toBe(true);
   });
 
+  test("a superseded socket can no longer act for the player, even after the new one drops", () => {
+    const room = newRoom();
+    const [a] = seated(room, "Ann");
+    const again = player(room, "Ann", a.token);
+    expect(a.do({ type: "bet", amount: 10 })).toBe("signed in from another connection");
+    room.disconnect(again.token, again.send);
+    expect(a.do({ type: "leave" })).toBe("signed in from another connection");
+    expect(room.players.has(a.token)).toBe(true);
+  });
+
   test("an unknown token just joins as a new player", () => {
     const room = newRoom();
     player(room, "Ann");
@@ -270,6 +280,22 @@ describe("absent players never stall the table", () => {
     expect(b.snap().table.seats.map(s => s.label)).toEqual(["Bob"]);
   });
 
+  test("a disconnected player's insurance is declined after the grace period", () => {
+    const room = newRoom();
+    stackDeck(room, [10, 10, 6, 9, 1, 4]); // Ann 10+10, Bob 6+9, dealer shows an ace
+    const [a, b] = seated(room, "Ann", "Bob");
+    a.do({ type: "bet", amount: 10 });
+    b.do({ type: "bet", amount: 10 });
+    expect(b.snap().table.phase).toBe("insurance");
+    room.disconnect(a.token, a.send);
+    vi.advanceTimersByTime(AWAY - 1);
+    expect(room.table.seats[0].insurance).toBeNull();
+    vi.advanceTimersByTime(1);
+    expect(room.table.seats[0].insurance).toEqual({ bet: 0 });
+    expect(b.do({ type: "action", action: "declineInsurance" })).toBeNull();
+    expect(b.snap().table.phase).not.toBe("insurance");
+  });
+
   test("anyone may deal while the host is disconnected", () => {
     const room = newRoom();
     stackDeck(room, [10, 7, 10, 6, 9, 8]);
@@ -296,8 +322,20 @@ describe("idle room GC", () => {
     expect([...rooms.keys()]).toEqual(["ABCDEF"]);
   });
 
+  test("a disposed room arms no timers when its sockets close afterwards", () => {
+    const room = newRoom();
+    const a = player(room, "Ann");
+    room.dispose();
+    room.disconnect(a.token, a.send);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   test("room codes are 6 chars from the unambiguous alphabet and avoid taken ones", () => {
-    const code = newRoomCode(new Set());
+    const offered: string[] = [];
+    const taken = { has: (c: string) => offered.push(c) <= 3 }; // the first three draws collide
+    const code = newRoomCode(taken);
+    expect(offered).toHaveLength(4);
+    expect(code).toBe(offered[3]);
     expect(code).toMatch(/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/);
   });
 });

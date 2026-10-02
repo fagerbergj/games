@@ -78,7 +78,7 @@ function attach(ws: WebSocket, rooms: Map<string, Room>, roomOptions: RoomOption
       return;
     }
     if (!room || !token) return fail("create or join a room first");
-    const err = room.handle(token, msg);
+    const err = room.handle(token, msg, send);
     if (err) return fail(err);
     if (msg.type === "leave") {
       if (room.players.size === 0) {

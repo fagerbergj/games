@@ -64,6 +64,7 @@ export class Room {
   emptySince: number | null = null;
 
   private beat: ReturnType<typeof setTimeout> | null = null;
+  private disposed = false;
   private settled: BlackjackTableState | null = null;
   private counted = new Set<string>();
   private count: RoomSnapshot["count"] = { running: 0, justReshuffled: false };
@@ -93,6 +94,8 @@ export class Room {
 
   /** A dropped socket keeps its seat; after awayMs its decisions are auto-played until it returns. */
   disconnect(token: string, send: Send) {
+    // Sockets terminated on shutdown close after dispose(); don't re-arm timers on a dead room.
+    if (this.disposed) return;
     const p = this.players.get(token);
     if (!p || p.send !== send) return;
     p.send = null;
@@ -104,10 +107,12 @@ export class Room {
     this.afterChange();
   }
 
-  /** Applies one in-room message from `token`; returns an error for the sender, or null. */
-  handle(token: string, msg: ClientMessage): string | null {
+  /** Applies one in-room message from `token` sent over `send`'s socket; returns an error for the sender, or null. */
+  handle(token: string, msg: ClientMessage, send: Send): string | null {
     const p = this.players.get(token);
     if (!p) return "not in this room";
+    // Only the player's live socket speaks for them; a tab superseded by a reconnect can't race it.
+    if (p.send !== send) return "signed in from another connection";
     const err = this.dispatch(p, msg);
     if (!err) this.afterChange();
     return err;
@@ -134,6 +139,7 @@ export class Room {
   }
 
   dispose() {
+    this.disposed = true;
     if (this.beat) clearTimeout(this.beat);
     this.beat = null;
     for (const p of this.players.values()) clearTimeout(p.awayTimer);
