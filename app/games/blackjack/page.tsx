@@ -7,7 +7,7 @@ import DealerHand from "./components/dealer-hand";
 import SeatPanel from "./components/seat-panel";
 import RulesPanel from "./components/rules-panel";
 
-// The dark gradient has only ~30 green steps across the felt, which band on OLED panels.
+// The dark gradient renders only ~13 distinct green levels across the felt, which band on OLED panels.
 // Overlay-blended grey noise dithers the band edges without shifting the average colour.
 const FELT_NOISE = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' stitchTiles='stitch'/%3E%3CfeColorMatrix values='.33 .33 .33 0 0 .33 .33 .33 0 0 .33 .33 .33 0 0 0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.3'/%3E%3C/svg%3E\")";
 const FELT_BACKGROUND = {
