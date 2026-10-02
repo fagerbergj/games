@@ -1,7 +1,7 @@
 import {
   drawCard, isBlackjack, calculateHandValue, getCardValue, dealerDraw, dealerUpCardCouldBeBlackjack,
   canSplit, canDoubleDown, canSurrender, splitHand, settleHand, evenMoneyPayout, surrenderPayout,
-  calculateInsurancePayout, createHand, createSeat, shuffledDeck, updateBankroll,
+  calculateInsurancePayout, createHand, createSeat, updateBankroll,
 } from "./engine";
 import { createShoe, needsReshuffle } from "./shoe";
 import { sanitizeHouseRules } from "./houseRules";
@@ -229,11 +229,11 @@ export function pendingDealHandId(state: BlackjackTableState): string | null {
  * reaches it; the caller deals its second card one beat later with this, matching
  * the physical deal where a split hand gets its next card only when it's on the clock.
  */
-export function dealSecondCardIfNeeded(state: BlackjackTableState, rng: Rng): BlackjackTableState {
+export function dealSecondCardIfNeeded(state: BlackjackTableState, deckCount: number, rng: Rng): BlackjackTableState {
   const cur = currentHand(state);
   if (!cur || cur.hand.cards.length !== 1) return state;
   const { seat, hand, seatIndex } = cur;
-  const drawn = drawCard(state.deck, () => shuffledDeck(rng));
+  const drawn = drawCard(state.deck, () => createShoe(deckCount, rng));
   const cards = [...hand.cards, drawn.card];
   const value = calculateHandValue(cards);
   const updatedHand: Hand = { ...hand, cards, status: value === 21 || isOneCardSplitAces(hand, state.houseRules) ? "stood" : "active" };

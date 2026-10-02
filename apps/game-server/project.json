@@ -1,0 +1,6 @@
+{
+  "name": "game-server",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/game-server/src",
+  "projectType": "application"
+}

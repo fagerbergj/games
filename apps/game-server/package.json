@@ -1,0 +1,12 @@
+{
+  "name": "game-server",
+  "private": true,
+  "type": "module",
+  "description": "Just the game server's own dependencies, so its image build skips the Next.js tree.",
+  "dependencies": {
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.12"
+  }
+}
