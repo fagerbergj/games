@@ -1,4 +1,4 @@
-import { Card, GameState, Player } from "@/app/games/kings-corner/lib/types";
+import { GameState } from "@/app/games/kings-corner/lib/types";
 import CardComponent from "./card";
 
 export default function GridComponent({

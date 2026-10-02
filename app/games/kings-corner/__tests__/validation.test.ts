@@ -1,4 +1,4 @@
-import { isValidGridPosition, isValidKingPlacement, isValidQueenPlacement, isValidJackPlacement, isGridFull, clearGrid, findPairsAddingTo10 } from "../lib/validation";
+import { isValidGridPosition, isGridFull, clearGrid, findPairsAddingTo10 } from "../lib/validation";
 import { GameState, Card } from "../lib/types";
 
 describe("Validation", () => {

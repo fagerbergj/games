@@ -2,6 +2,20 @@
 
 import { Card } from "../lib/types";
 
+const SUIT_SYMBOLS: Record<string, string> = {
+  hearts: "♥",
+  diamonds: "♦",
+  clubs: "♣",
+  spades: "♠",
+};
+
+const RANK_SYMBOLS: Record<number, string> = {
+  1: "A",
+  11: "J",
+  12: "Q",
+  13: "K",
+};
+
 export default function CardComponent({
   card,
   onClick,
@@ -19,24 +33,11 @@ export default function CardComponent({
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
 }) {
-  const suitSymbols: Record<string, string> = {
-    hearts: "♥",
-    diamonds: "♦",
-    clubs: "♣",
-    spades: "♠",
-  };
-
-  const rankSymbols: Record<number, string> = {
-    1: "A",
-    11: "J",
-    12: "Q",
-    13: "K",
-  };
-
-  const rank = rankSymbols[card.rank] || card.rank.toString();
-  const suit = suitSymbols[card.suit] || card.suit;
+  const rank = RANK_SYMBOLS[card.rank] ?? String(card.rank);
+  const suit = SUIT_SYMBOLS[card.suit] ?? card.suit;
 
   const isRed = card.suit === "hearts" || card.suit === "diamonds";
+  const textColor = isRed ? "text-red-600" : "text-zinc-900";
 
   if (!faceUp) {
     return (
@@ -62,23 +63,23 @@ export default function CardComponent({
       `}
     >
       <div className="absolute top-1 left-1 flex flex-col items-center">
-        <span className={`text-xs font-bold ${isRed ? "text-red-600" : "text-zinc-900"}`}>
+        <span className={`text-xs font-bold ${textColor}`}>
           {rank}
         </span>
-        <span className={`text-xs ${isRed ? "text-red-600" : "text-zinc-900"}`}>
+        <span className={`text-xs ${textColor}`}>
           {suit}
         </span>
       </div>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className={`text-2xl ${isRed ? "text-red-600" : "text-zinc-900"}`}>
+        <span className={`text-2xl ${textColor}`}>
           {suit}
         </span>
       </div>
       <div className="absolute bottom-1 right-1 flex flex-col items-center rotate-180">
-        <span className={`text-xs font-bold ${isRed ? "text-red-600" : "text-zinc-900"}`}>
+        <span className={`text-xs font-bold ${textColor}`}>
           {rank}
         </span>
-        <span className={`text-xs ${isRed ? "text-red-600" : "text-zinc-900"}`}>
+        <span className={`text-xs ${textColor}`}>
           {suit}
         </span>
       </div>
