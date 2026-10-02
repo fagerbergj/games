@@ -7,6 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./app"),
+      "@game-rules": path.resolve(__dirname, "./libs/game-rules/src"),
     },
   },
   test: {

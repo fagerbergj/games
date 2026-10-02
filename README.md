@@ -56,7 +56,14 @@ app/
 ├── layout.tsx
 ├── page.tsx
 └── globals.css
+libs/
+└── game-rules/src/
+    └── blackjack/          # Pure rules engine (no React/DOM), imported as @game-rules/blackjack
 ```
+
+Game rules that a server must also run live in `libs/game-rules` as framework-free
+TypeScript. State is plain JSON, and every transition that shuffles takes an injected
+`rng`, so a seeded run replays exactly. Lint blocks React, Next and browser globals there.
 
 ## Technologies
 

@@ -2,9 +2,9 @@ import {
   canSplit, canDoubleDown, canSurrender, splitHand, createHand, calculatePayout,
   dealerDraw, dealerDrawRule, isSoftHand, surrenderPayout, evenMoneyPayout,
   calculateInsurancePayout, settleHand, isBlackjack,
-} from "../lib/engine";
-import { DEFAULT_HOUSE_RULES } from "../lib/houseRules";
-import type { Card, HouseRules } from "../lib/types";
+} from "../engine";
+import { DEFAULT_HOUSE_RULES } from "../houseRules";
+import type { Card, HouseRules } from "../types";
 
 function card(rank: number, id?: string): Card {
   return { id: id ?? `c-${rank}-${Math.random()}`, suit: "spades" as const, rank, faceUp: true };

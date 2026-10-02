@@ -1,6 +1,7 @@
+import { STARTING_BANKROLL } from "@game-rules/blackjack";
+
 const KEY = "blackjack_bankroll";
 const SEATS_KEY = "blackjack_seat_bankrolls";
-export const STARTING_BANKROLL = 500;
 
 export function getBankroll(): number {
   try {

@@ -1,5 +1,5 @@
-import { hiLoValue, runningCount, decksRemaining, trueCount, countMeaning, rankLabel } from "../lib/count";
-import type { Card } from "../lib/types";
+import { hiLoValue, runningCount, decksRemaining, trueCount, countMeaning, rankLabel } from "../count";
+import type { Card } from "../types";
 
 function card(rank: number): Card {
   return { id: `c-${rank}-${Math.random()}`, suit: "spades" as const, rank, faceUp: true };

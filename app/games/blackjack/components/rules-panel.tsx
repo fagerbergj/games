@@ -1,10 +1,7 @@
 "use client"
 
 import { useId, useRef, useState } from "react"
-import { HOUSE_RULE_LABELS, MAX_SPLITS_CAP, summarizeHouseRules } from "../lib/houseRules"
-import { DECK_COUNT_OPTIONS } from "../lib/shoe"
-import type { HouseRules } from "../lib/types"
-import { MIN_SEATS, MAX_SEATS } from "../hooks/useBlackjack"
+import { HOUSE_RULE_LABELS, MAX_SPLITS_CAP, summarizeHouseRules, DECK_COUNT_OPTIONS, type HouseRules, MIN_SEATS, MAX_SEATS } from "@game-rules/blackjack"
 import { usePopoverDismiss } from "../hooks/usePopoverDismiss"
 
 interface Props {

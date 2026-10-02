@@ -1,3 +1,6 @@
+/** Uniform [0, 1) source, like Math.random; inject a seeded one for reproducible games. */
+export type Rng = () => number;
+
 export interface Card {
   id: string;
   suit: "hearts" | "diamonds" | "clubs" | "spades";

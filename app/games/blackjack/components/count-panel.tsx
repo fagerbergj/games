@@ -1,6 +1,5 @@
 "use client"
-import { rankLabel, countMeaning } from "../lib/count"
-import type { Card } from "../lib/types"
+import { rankLabel, countMeaning, type Card } from "@game-rules/blackjack"
 
 interface Props {
   runningCount: number

@@ -1,6 +1,5 @@
 "use client"
-import { getBookAdvice } from "../lib/strategy"
-import type { Card, HouseRules } from "../lib/types"
+import { getBookAdvice, type Card, type HouseRules } from "@game-rules/blackjack"
 
 interface Props {
   playerHand: readonly Card[]

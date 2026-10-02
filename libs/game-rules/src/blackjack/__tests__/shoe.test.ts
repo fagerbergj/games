@@ -1,4 +1,4 @@
-import { createShoe, needsReshuffle, DECK_COUNT_OPTIONS, PENETRATION_THRESHOLD } from "../lib/shoe";
+import { createShoe, needsReshuffle, DECK_COUNT_OPTIONS, PENETRATION_THRESHOLD } from "../shoe";
 
 describe("createShoe — composition", () => {
   test.each(DECK_COUNT_OPTIONS)("%i decks produces %i×52 cards", (n) => {

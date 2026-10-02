@@ -1,5 +1,5 @@
-import { calculateHandValue, isBlackjack } from "../lib/engine";
-import type { Card } from "../lib/types";
+import { calculateHandValue, isBlackjack } from "../engine";
+import type { Card } from "../types";
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */

@@ -1,5 +1,5 @@
-import { dealerDraw, dealerDrawRule, calculateHandValue } from "../lib/engine";
-import type { Card } from "../lib/types";
+import { dealerDraw, dealerDrawRule, calculateHandValue } from "../engine";
+import type { Card } from "../types";
 
 /* ------------------------------------------------------------------ */
 /*  Test helpers                                                      */

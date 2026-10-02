@@ -1,25 +1,32 @@
-import type { Card, Hand, Seat, HouseRules, BlackjackResult } from "./types";
+import type { Card, Hand, Seat, HouseRules, BlackjackResult, Rng } from "./types";
 import { DEFAULT_HOUSE_RULES } from "./houseRules";
 
 const SUITS = ["hearts", "diamonds", "clubs", "spades"] as const;
 const RANKS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] as const;
 
-let deckIdCounter = 0;
+/**
+ * Prefix for one deck/shoe's card ids, drawn from the rng so ids stay unique across
+ * shoes (counting dedupes by id) while a seeded run still reproduces them exactly.
+ */
+export function deckTag(rng: Rng): string {
+  return Math.floor(rng() * 2 ** 32).toString(36);
+}
 
-export function shuffledDeck(): Card[] {
+export function shuffledDeck(rng: Rng = Math.random): Card[] {
+  const tag = deckTag(rng);
   const deck: Card[] = [];
   for (const suit of SUITS) {
     for (const rank of RANKS) {
-      deck.push({ id: `bj-${deckIdCounter++}`, suit, rank, faceUp: true });
+      deck.push({ id: `bj-${tag}-${deck.length}`, suit, rank, faceUp: true });
     }
   }
-  return shuffle(deck);
+  return shuffle(deck, rng);
 }
 
-export function shuffle<T>(array: T[]): T[] {
+export function shuffle<T>(array: T[], rng: Rng = Math.random): T[] {
   const a = [...array];
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
@@ -104,12 +111,13 @@ export function dealerDraw(
   originalDeck: Card[],
   dealerHand: Card[],
   rules: HouseRules = DEFAULT_HOUSE_RULES,
+  rng: Rng = Math.random,
 ): { hand: Card[]; deck: Card[] } {
   const currenthand = [...dealerHand];
   let remainingdeck = [...originalDeck];
 
   while (dealerDrawRule(calculateHandValue(currenthand), isSoftHand(currenthand), rules)) {
-    const next = drawCard(remainingdeck);
+    const next = drawCard(remainingdeck, () => shuffledDeck(rng));
     currenthand.push(next.card);
     remainingdeck = next.remaining; // drawCard is pure — must reassign or the same top card redraws forever
   }
@@ -204,7 +212,8 @@ export function canSurrender(rules: HouseRules, hand: Card[], isSplitHand: boole
 
 export function createHand(cards: Card[], bet: number, overrides: Partial<Hand> = {}): Hand {
   return {
-    id: `hand-${deckIdCounter++}`,
+    // Card ids are unique per shoe, so the first card names the hand without a global counter.
+    id: `hand-${cards[0]?.id}`,
     cards,
     bet,
     status: "active",
@@ -236,9 +245,9 @@ export function createSeat(id: string, label: string, bankroll: number): Seat {
  * flagged so callers can apply the one-card rule; caller is responsible for
  * validating canSplit first.
  */
-export function splitHand(hand: Hand, deck: Card[]): { hands: [Hand, Hand]; deck: Card[] } {
+export function splitHand(hand: Hand, deck: Card[], rng: Rng = Math.random): { hands: [Hand, Hand]; deck: Card[] } {
   const [cardA, cardB] = hand.cards;
-  const draw = drawCard(deck);
+  const draw = drawCard(deck, () => shuffledDeck(rng));
   const isAceSplit = cardA.rank === 1;
 
   const handA = createHand([cardA, draw.card], hand.bet, {

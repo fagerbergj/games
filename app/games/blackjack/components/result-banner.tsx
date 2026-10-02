@@ -1,5 +1,5 @@
 "use client"
-import type { BlackjackResult } from "../lib/types"
+import type { BlackjackResult } from "@game-rules/blackjack"
 import { formatMoney } from "../lib/money"
 
 interface Props {

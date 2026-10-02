@@ -4,8 +4,8 @@ import GamePage from "../page";
 // Same deterministic-deck trick as game-flow.test.ts. Reshuffling disabled --
 // out of scope for these UI tests, covered separately in shoe-continuity.test.ts.
 let mockRanks: number[] = [];
-vi.mock("../lib/shoe", async () => {
-  const actual = await vi.importActual<typeof import("../lib/shoe")>("../lib/shoe");
+vi.mock("@game-rules/blackjack/shoe", async () => {
+  const actual = await vi.importActual<typeof import("@game-rules/blackjack/shoe")>("@game-rules/blackjack/shoe");
   return {
     ...actual,
     createShoe: () => mockRanks.map((rank, i) => ({ id: `m-${i}`, suit: "spades" as const, rank, faceUp: true })),
