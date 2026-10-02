@@ -46,3 +46,23 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Extract game-server metadata
+        id: meta-server
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/fagerbergj/game-server
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+
+      - name: Build and push game-server
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/game-server/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta-server.outputs.tags }}
+          cache-from: type=gha,scope=game-server
+          cache-to: type=gha,mode=max,scope=game-server
