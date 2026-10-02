@@ -34,38 +34,47 @@ function isSoftHand(hand: readonly Card[]): boolean {
 /* ------------------------------------------------------------------ */
 
 function hardAction(total: number, d: number, dealerHitsSoft17: boolean): Action {
-  if (total <= 8) return "hit";
-  if (total === 9) return d >= 3 && d <= 6 ? "double" : "hit";
-  if (total === 10) return d >= 2 && d <= 9 ? "double" : "hit";
-  if (total === 11) return d !== 1 || dealerHitsSoft17 ? "double" : "hit";
+  if (total <= 11) return hardDoubleAction(total, d, dealerHitsSoft17);
   if (total === 12) return d >= 4 && d <= 6 ? "stand" : "hit";
   if (total <= 16) return d >= 2 && d <= 6 ? "stand" : "hit";
   return "stand"; // 17+
+}
+
+function hardDoubleAction(total: number, d: number, dealerHitsSoft17: boolean): Action {
+  if (total <= 8) return "hit";
+  if (total === 9) return d >= 3 && d <= 6 ? "double" : "hit";
+  if (total === 10) return d >= 2 && d <= 9 ? "double" : "hit";
+  return d !== 1 || dealerHitsSoft17 ? "double" : "hit"; // 11
 }
 
 function softAction(total: number, d: number, dealerHitsSoft17: boolean): Action {
   if (total <= 14) return d === 4 || d === 5 ? "double" : "hit"; // A,2 - A,3
   if (total <= 16) return d >= 4 && d <= 6 ? "double" : "hit"; // A,4 - A,5
   if (total === 17) return d >= 3 && d <= 6 ? "double" : "hit"; // A,6
-  if (total === 18) {
-    if (d >= 3 && d <= 6) return "double"; // "Ds": double, else stand
-    if (d === 2) return dealerHitsSoft17 ? "double" : "stand"; // the H17/S17 soft-18 delta
-    if (d === 7 || d === 8) return "stand";
-    return "hit"; // vs 9, 10, Ace
-  }
+  if (total === 18) return softEighteenAction(d, dealerHitsSoft17);
   return "stand"; // A,8 / A,9
 }
 
+function softEighteenAction(d: number, dealerHitsSoft17: boolean): Action {
+  if (d >= 3 && d <= 6) return "double"; // "Ds": double, else stand
+  if (d === 2) return dealerHitsSoft17 ? "double" : "stand"; // the H17/S17 soft-18 delta
+  if (d === 7 || d === 8) return "stand";
+  return "hit"; // vs 9, 10, Ace
+}
+
+const PAIR_ACTIONS: Record<number, (d: number) => Action> = {
+  1: () => "split", // A,A
+  10: () => "stand", // 10,10 (any ten-value pair)
+  9: d => (d === 7 || d === 10 || d === 1 ? "stand" : "split"),
+  8: () => "split",
+  7: d => (d >= 2 && d <= 7 ? "split" : "hit"),
+  6: d => (d >= 2 && d <= 6 ? "split" : "hit"),
+  5: d => (d >= 2 && d <= 9 ? "double" : "hit"), // never split — it's a hard 10
+  4: d => (d === 5 || d === 6 ? "split" : "hit"),
+};
+
 function pairAction(rank: number, d: number): Action {
-  if (rank === 1) return "split"; // A,A
-  if (rank === 10) return "stand"; // 10,10 (any ten-value pair)
-  if (rank === 9) return d === 7 || d === 10 || d === 1 ? "stand" : "split";
-  if (rank === 8) return "split";
-  if (rank === 7) return d >= 2 && d <= 7 ? "split" : "hit";
-  if (rank === 6) return d >= 2 && d <= 6 ? "split" : "hit";
-  if (rank === 5) return d >= 2 && d <= 9 ? "double" : "hit"; // never split — it's a hard 10
-  if (rank === 4) return d === 5 || d === 6 ? "split" : "hit";
-  return d >= 2 && d <= 7 ? "split" : "hit"; // 2,2 and 3,3
+  return PAIR_ACTIONS[rank]?.(d) ?? (d >= 2 && d <= 7 ? "split" : "hit"); // 2,2 and 3,3
 }
 
 /** Hard, non-pair totals where basic strategy forfeits half the bet rather than play it out. */

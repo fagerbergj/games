@@ -77,19 +77,22 @@ export function isGridFull(grid: (Card | null)[][]): boolean {
 // Kings in the corners, Queens on top/bottom edges, Jacks on left/right edges.
 // The center number cards are irrelevant to winning.
 export function areEdgesComplete(grid: (Card | null)[][]): boolean {
-  for (let row = 0; row < 4; row++) {
-    for (let col = 0; col < 4; col++) {
-      const isCorner = (row === 0 || row === 3) && (col === 0 || col === 3);
-      const isTopBottomEdge = (row === 0 || row === 3) && col > 0 && col < 3;
-      const isLeftRightEdge = (col === 0 || col === 3) && row > 0 && row < 3;
-      const cell = grid[row][col];
+  return grid.every((cells, row) =>
+    cells.every((cell, col) => {
+      const required = requiredEdgeRank(row, col);
+      return required === null || cell?.rank === required;
+    }),
+  );
+}
 
-      if (isCorner && cell?.rank !== 13) return false;
-      if (isTopBottomEdge && cell?.rank !== 12) return false;
-      if (isLeftRightEdge && cell?.rank !== 11) return false;
-    }
-  }
-  return true;
+/** Face-card rank an edge space needs to win (K corner, Q top/bottom, J left/right); null for the center. */
+export function requiredEdgeRank(row: number, col: number): number | null {
+  const rowEdge = row === 0 || row === 3;
+  const colEdge = col === 0 || col === 3;
+  if (rowEdge && colEdge) return 13;
+  if (rowEdge) return 12;
+  if (colEdge) return 11;
+  return null;
 }
 
 export function clearGrid(grid: (Card | null)[][]): (Card | null)[][] {

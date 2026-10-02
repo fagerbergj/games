@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- pure table reducers + the hook; splitting them is deferred until PR #25 (split fix) lands to avoid conflicts */
 import { useState, useCallback, useEffect, useRef } from "react";
 import {
   drawCard as engineDraw, isBlackjack, calculateHandValue, getCardValue,
@@ -431,6 +432,7 @@ function buyBackInFn(state: BlackjackTableState, seatIndex: number, deckCount: n
 // --- The hook ----------------------------------------------------------------
 
 /** Hook that manages a multi-seat blackjack table: N seats, one dealer, one continuing shoe. */
+// eslint-disable-next-line max-lines-per-function -- one hook owning table state and its timers; extract per-concern hooks after PR #25
 export function useBlackjack(initialSeatCount = 1) {
   // Initial state must match SSR (no localStorage access) to avoid a hydration
   // mismatch; the mount effect below adopts every persisted value.

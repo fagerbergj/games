@@ -20,7 +20,7 @@ export default function DeckComponent({
         </button>
       </div>
       <div className="flex items-center justify-center gap-2">
-        {deck.slice(0, 5).map((card, index) => (
+        {deck.slice(0, 5).map((card) => (
           <div
             key={card.id}
             className="w-16 h-24 bg-zinc-700 rounded-lg shadow-lg -ml-12 first:ml-0 transition-all hover:scale-105"

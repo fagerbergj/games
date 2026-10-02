@@ -1,5 +1,4 @@
-import { Card, Hand, Seat, HouseRules } from "./types";
-import type { BlackjackResult } from "./types";
+import type { Card, Hand, Seat, HouseRules, BlackjackResult } from "./types";
 import { DEFAULT_HOUSE_RULES } from "./houseRules";
 
 const SUITS = ["hearts", "diamonds", "clubs", "spades"] as const;
