@@ -58,6 +58,8 @@ describe("split mechanics via the hook", () => {
     expect(seat.bankroll).toBe(startBankroll);
 
     act(() => { result.current.stand(); }); // hand A done -> hand B is dealt its second card
+    expect(result.current.state.seats[0].hands[1].cards).toHaveLength(1); // a beat later, not instantly
+    flush();
     seat = result.current.state.seats[0];
     expect(seat.hands[1].cards.map(c => c.rank)).toEqual([8, 5]);
   });
@@ -178,6 +180,7 @@ describe("split aces one-card rule via the hook", () => {
 
     act(() => { result.current.placeBet(0, 50); result.current.startRound(); });
     act(() => { result.current.split(); });
+    flush();
 
     const seat = result.current.state.seats[0];
     expect(seat.hands[0].cards).toHaveLength(2);
@@ -283,5 +286,37 @@ describe("multi-seat: independent bets, turns, and settlement", () => {
     expect(result.current.state.seats).toHaveLength(5);
     act(() => { result.current.setSeatCount(1); });
     expect(result.current.state.seats).toHaveLength(1);
+  });
+});
+
+describe("split hands receive their second card only when play reaches them", () => {
+  test("split aces: hand B is not dealt in the same step as hand A", () => {
+    setDeck([1, 1, 2, 3, 9, 8]);
+    const { result } = renderHook(() => useBlackjack(1));
+    act(() => { result.current.placeBet(0, 50); result.current.startRound(); });
+    act(() => { result.current.split(); });
+
+    const [a, b] = result.current.state.seats[0].hands;
+    expect(a.cards.map(c => c.rank)).toEqual([1, 9]);
+    expect(b.cards.map(c => c.rank)).toEqual([1]);
+
+    flush();
+    expect(result.current.state.seats[0].hands[1].cards.map(c => c.rank)).toEqual([1, 8]);
+    expect(result.current.state.phase).not.toBe("playerTurns");
+  });
+
+  test("a 21 on hand A stands it, then deals hand B's card a beat later", () => {
+    setDeck([10, 10, 2, 3, 1, 5, 4]);
+    const { result } = renderHook(() => useBlackjack(1));
+    act(() => { result.current.placeBet(0, 50); result.current.startRound(); });
+    act(() => { result.current.split(); });
+    expect(result.current.state.seats[0].hands[1].cards).toHaveLength(1);
+    expect(result.current.state.seats[0].hands[0].status).toBe("stood"); // 21 is not hittable
+    flush();
+    const seat = result.current.state.seats[0];
+    expect(seat.hands[0].cards.map(c => c.rank)).toEqual([10, 1]);
+    expect(seat.hands[1].cards.map(c => c.rank)).toEqual([10, 5]);
+    expect(seat.activeHandIndex).toBe(1);
+    expect(result.current.actions?.canHit).toBe(true);
   });
 });
