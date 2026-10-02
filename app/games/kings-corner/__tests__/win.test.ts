@@ -84,7 +84,7 @@ describe("win condition", () => {
       result.current.setGameState((prev) => prev ? {
         ...prev,
         phase: "playing",
-        deck: createDeck(),
+        deck: [card(5, "next")], // a placeable next card; a random face card would end in gameover
         discardPile: [],
         drawnCard: card(13, "king"),
         grid,

@@ -3,7 +3,9 @@ import { Card } from "./types";
 const SUITS = ["hearts", "diamonds", "clubs", "spades"] as const;
 const RANKS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] as const;
 
-export function createDeck(): Card[] {
+export type Rng = () => number;
+
+export function createDeck(rng: Rng = Math.random): Card[] {
   const deck: Card[] = [];
   let idCounter = 0;
 
@@ -18,13 +20,13 @@ export function createDeck(): Card[] {
     }
   }
 
-  return shuffle(deck);
+  return shuffle(deck, rng);
 }
 
-export function shuffle<T>(array: T[]): T[] {
+export function shuffle<T>(array: T[], rng: Rng = Math.random): T[] {
   const newArray = [...array];
   for (let i = newArray.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
   }
   return newArray;

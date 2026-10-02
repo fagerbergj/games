@@ -26,10 +26,10 @@ describe("Deck Operations", () => {
   describe("shuffle", () => {
     it("should shuffle an array", () => {
       const array = [1, 2, 3, 4, 5];
-      const shuffled = shuffle(array);
+      const shuffled = shuffle(array, () => 0); // always swap with index 0
 
-      expect(shuffled.length).toBe(5);
-      expect(shuffled).not.toEqual(array);
+      expect(shuffled).toEqual([2, 3, 4, 5, 1]);
+      expect(array).toEqual([1, 2, 3, 4, 5]);
     });
   });
 
