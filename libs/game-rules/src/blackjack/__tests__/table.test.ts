@@ -19,7 +19,7 @@ function seeded(seed: number): Rng {
 }
 
 function playerMove(s: BlackjackTableState, rng: Rng): BlackjackTableState {
-  if (pendingDealHandId(s)) return dealSecondCardIfNeeded(s, rng);
+  if (pendingDealHandId(s)) return dealSecondCardIfNeeded(s, DECKS, rng);
   const acts = getActiveHandActions(s)!;
   const value = calculateHandValue(currentHand(s)!.hand.cards);
   if (acts.canSplit) return split(s, rng);

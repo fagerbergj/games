@@ -308,7 +308,7 @@ export class Room {
         this.settled = null;
       }
     } else {
-      this.table = dealSecondCardIfNeeded(t, this.opts.rng);
+      this.table = dealSecondCardIfNeeded(t, this.opts.deckCount, this.opts.rng);
     }
   }
 

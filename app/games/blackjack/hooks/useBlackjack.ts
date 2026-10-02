@@ -124,16 +124,16 @@ function useDealerReveal(state: BlackjackTableState, setState: SetTable, roundRe
 }
 
 // A split hand's second card is dealt a beat after play reaches it, not with the split.
-function usePendingDeal(state: BlackjackTableState, setState: SetTable, roundRef: RoundRef) {
+function usePendingDeal(state: BlackjackTableState, setState: SetTable, roundRef: RoundRef, deckCount: number) {
   const waitingId = pendingDealHandId(state);
   useEffect(() => {
     if (!waitingId) return;
     const myRound = roundRef.current;
     const t = setTimeout(() => {
-      if (roundRef.current === myRound) setState(s => dealSecondCardIfNeeded(s, rng));
+      if (roundRef.current === myRound) setState(s => dealSecondCardIfNeeded(s, deckCount, rng));
     }, REVEAL_DELAY_MS);
     return () => clearTimeout(t);
-  }, [waitingId, setState, roundRef]);
+  }, [waitingId, setState, roundRef, deckCount]);
 }
 
 /** Dispatchers that each apply one table transition. */
@@ -178,7 +178,7 @@ export function useBlackjack(initialSeatCount = 1) {
 
   const { runningCount, lastCountedCard, resetCount } = useCardCount(state);
   useDealerReveal(state, setState, roundRef);
-  usePendingDeal(state, setState, roundRef);
+  usePendingDeal(state, setState, roundRef, deckCount);
   const tableActions = useTableActions(setState, deckCount);
 
   const setDeckCount = useCallback((n: number) => {
