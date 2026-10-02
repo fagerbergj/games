@@ -12,7 +12,19 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    # Per image: each one builds in its own parallel job.
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: games
+            file: Dockerfile
+            # buildx's default scope, so the web image keeps its existing cache.
+            cache-scope: buildkit
+          - image: game-server
+            file: apps/game-server/Dockerfile
+            cache-scope: game-server
     steps:
       - uses: actions/checkout@v6
 
@@ -32,7 +44,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/fagerbergj/games
+          images: ghcr.io/fagerbergj/${{ matrix.image }}
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
@@ -41,28 +53,9 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: ${{ matrix.file }}
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Extract game-server metadata
-        id: meta-server
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/fagerbergj/game-server
-          tags: |
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
-
-      - name: Build and push game-server
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/game-server/Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: ${{ steps.meta-server.outputs.tags }}
-          cache-from: type=gha,scope=game-server
-          cache-to: type=gha,mode=max,scope=game-server
+          cache-from: type=gha,scope=${{ matrix.cache-scope }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.cache-scope }}
