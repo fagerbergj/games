@@ -63,7 +63,8 @@ function currentHand(state: BlackjackTableState): { seat: Seat; hand: Hand; seat
 export function getActiveHandActions(state: BlackjackTableState) {
   if (state.phase !== "playerTurns") return null;
   const cur = currentHand(state);
-  if (!cur || cur.hand.status !== "active") return null;
+  // A one-card hand is still waiting for its deal (see the pending-deal effect), so no actions yet.
+  if (!cur || cur.hand.status !== "active" || cur.hand.cards.length < 2) return null;
   const { seat, hand } = cur;
   const rules = state.houseRules;
   const funds = availableFunds(seat);
@@ -232,8 +233,8 @@ function enterDealerTurn(state: BlackjackTableState): BlackjackTableState {
 
 /**
  * A freshly-activated split hand carries only its original card until play
- * reaches it -- deal its second card now, matching the physical deal where
- * the dealer doesn't give a split hand its next card until it's on the clock.
+ * reaches it; the pending-deal effect calls this to deal its second card, matching
+ * the physical deal where a split hand gets its next card only when it's on the clock.
  */
 function dealSecondCardIfNeeded(state: BlackjackTableState): BlackjackTableState {
   const cur = currentHand(state);
@@ -242,10 +243,14 @@ function dealSecondCardIfNeeded(state: BlackjackTableState): BlackjackTableState
   const drawn = engineDraw(state.deck);
   const cards = [...hand.cards, drawn.card];
   const value = calculateHandValue(cards);
-  const updatedHand: Hand = { ...hand, cards, status: value === 21 ? "stood" : "active" };
+  const updatedHand: Hand = { ...hand, cards, status: value === 21 || isOneCardSplitAces(hand, state.houseRules) ? "stood" : "active" };
   const hands = seat.hands.map((h, i) => (i === seat.activeHandIndex ? updatedHand : h));
   const seats = state.seats.map((s, i) => (i === seatIndex ? { ...s, hands } : s));
   return advanceIfCurrentHandTerminal({ ...state, seats, deck: drawn.remaining });
+}
+
+function isOneCardSplitAces(hand: Hand, rules: HouseRules): boolean {
+  return hand.isSplitAces && rules.splitAcesOneCardOnly;
 }
 
 /** After any action that can end a hand's turn, seeks the next hand entitled to act, or ends the round. */
@@ -253,7 +258,7 @@ function advanceIfCurrentHandTerminal(state: BlackjackTableState): BlackjackTabl
   if (state.phase !== "playerTurns") return state;
   const seat = state.seats[state.activeSeatIndex];
   const hand = seat?.hands[seat.activeHandIndex];
-  if (hand && hand.status === "active") return dealSecondCardIfNeeded(state);
+  if (hand && hand.status === "active") return state;
   if (!seat) return enterDealerTurn(state);
 
   const withinSeat = findNextActive([seat], 0, seat.activeHandIndex);
@@ -261,7 +266,7 @@ function advanceIfCurrentHandTerminal(state: BlackjackTableState): BlackjackTabl
     const seats = state.seats.map((s, i) =>
       i === state.activeSeatIndex ? { ...s, activeHandIndex: withinSeat.handIndex } : s
     );
-    return dealSecondCardIfNeeded({ ...state, seats });
+    return { ...state, seats };
   }
 
   const seatsMarked = state.seats.map((s, i) => (i === state.activeSeatIndex ? { ...s, done: true } : s));
@@ -270,7 +275,7 @@ function advanceIfCurrentHandTerminal(state: BlackjackTableState): BlackjackTabl
     const seats = seatsMarked.map((s, i) =>
       i === next.seatIndex ? { ...s, activeHandIndex: next.handIndex } : s
     );
-    return dealSecondCardIfNeeded({ ...state, seats, activeSeatIndex: next.seatIndex });
+    return { ...state, seats, activeSeatIndex: next.seatIndex };
   }
 
   return enterDealerTurn({ ...state, seats: seatsMarked });
@@ -329,25 +334,12 @@ function split(state: BlackjackTableState): BlackjackTableState {
   if (!engineCanSplit(hand.cards, rules, splitsUsed) || availableFunds(seat) < hand.bet) return state;
 
   const { hands: [a, b], deck } = engineSplitHand(hand, state.deck);
-  const oneCardOnly = a.isSplitAces && rules.splitAcesOneCardOnly;
-
-  // Split aces resolve with no further player action, so both cards are dealt
-  // right away instead of waiting for hand B to become active.
-  let handA = a;
-  let handB = b;
-  let nextDeck = deck;
-  if (oneCardOnly) {
-    const drawn = engineDraw(nextDeck);
-    handB = { ...b, cards: [...b.cards, drawn.card] };
-    nextDeck = drawn.remaining;
-    handA = { ...handA, status: "stood" as const };
-    handB = { ...handB, status: "stood" as const };
-  }
+  const handA: Hand = isOneCardSplitAces(a, rules) || calculateHandValue(a.cards) === 21 ? { ...a, status: "stood" } : a;
 
   const idx = seat.activeHandIndex;
-  const hands = [...seat.hands.slice(0, idx), handA, handB, ...seat.hands.slice(idx + 1)];
+  const hands = [...seat.hands.slice(0, idx), handA, b, ...seat.hands.slice(idx + 1)];
   const seats = state.seats.map((s, i) => (i === seatIndex ? { ...s, hands } : s));
-  return advanceIfCurrentHandTerminal({ ...state, seats, deck: nextDeck });
+  return advanceIfCurrentHandTerminal({ ...state, seats, deck });
 }
 
 function surrender(state: BlackjackTableState): BlackjackTableState {
@@ -530,6 +522,18 @@ export function useBlackjack(initialSeatCount = 1) {
     return () => timers.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately keyed on phase alone: the reveal's own ticks change dealerHand but must not re-trigger this effect
   }, [state.phase]);
+
+  // A split hand's second card is dealt a beat after play reaches it, not with the split.
+  const waitingHand = state.phase === "playerTurns" ? currentHand(state)?.hand : undefined;
+  const pendingDealHandId = waitingHand?.cards.length === 1 ? waitingHand.id : null;
+  useEffect(() => {
+    if (!pendingDealHandId) return;
+    const myHandId = handIdRef.current;
+    const t = setTimeout(() => {
+      if (handIdRef.current === myHandId) setState(dealSecondCardIfNeeded);
+    }, REVEAL_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [pendingDealHandId]);
 
   const setDeckCount = useCallback((n: number) => {
     saveDeckCount(n);
