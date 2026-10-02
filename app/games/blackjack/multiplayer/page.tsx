@@ -121,7 +121,8 @@ function Table({ room, send }: { room: RoomSnapshot; send: Send }) {
 
 function HostControls({ room, send }: { room: RoomSnapshot; send: Send }) {
   const { phase, seats } = room.table;
-  if (!room.you.isHost) return null;
+  // Not just the host: anyone may direct the table while the host is disconnected.
+  if (!room.you.canDirect) return null;
   if (phase === "result") {
     return <button type="button" onClick={() => send({ type: "newRound" })} className={`${BUTTON} bg-yellow-500 hover:bg-yellow-600 text-black`}>New Round</button>;
   }

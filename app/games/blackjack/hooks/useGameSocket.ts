@@ -3,6 +3,11 @@ import type { ClientMessage, RoomSnapshot, ServerMessage } from "@game-rules/bla
 
 const SESSION_KEY = "blackjack_mp_session";
 const RETRY_MS = 1000;
+const MAX_RETRY_MS = 8000;
+// About half a minute of backoff before telling the user; a refresh tries again.
+const MAX_ATTEMPTS = 6;
+const MAX_QUEUED = 20;
+const UNREACHABLE = "Can't reach the game server. Refresh to try again.";
 
 interface Session { code: string; token: string; name: string }
 
@@ -38,6 +43,8 @@ export function useGameSocket() {
   // What to say on (re)connect; each new value opens a fresh socket. `attempt` forces a redial.
   const [target, setTarget] = useState<{ hello: ClientMessage; name: string; attempt: number } | null>(null);
   const socket = useRef<WebSocket | null>(null);
+  // Frames sent while (re)connecting; flushed once the server has re-attached us to the room.
+  const queue = useRef<ClientMessage[]>([]);
 
   useEffect(() => {
     const s = loadSession();
@@ -48,21 +55,42 @@ export function useGameSocket() {
   useEffect(() => {
     if (!target) return;
     const ws = new WebSocket(serverUrl());
-    socket.current = ws;
     let retry: ReturnType<typeof setTimeout> | undefined;
+    let joined = false;
     ws.onopen = () => ws.send(JSON.stringify(target.hello));
     ws.onmessage = e => {
       const m = JSON.parse(String(e.data)) as ServerMessage;
-      if (m.type === "joined") saveSession({ code: m.code, token: m.token, name: target.name });
-      else if (m.type === "state") {
+      if (m.type === "joined") {
+        joined = true;
+        // Sends go straight out only once the server has attached this socket; until then they queue.
+        socket.current = ws;
+        saveSession({ code: m.code, token: m.token, name: target.name });
+        for (const q of queue.current.splice(0)) ws.send(JSON.stringify(q));
+      } else if (m.type === "state") {
         setRoom(m.room);
         setError(null);
-      } else setError(m.message);
+      } else {
+        // An error before `joined` is the server refusing our hello (e.g. the room expired): stop rejoining it.
+        if (!joined) {
+          saveSession(null);
+          queue.current = [];
+          setRoom(null);
+        }
+        setError(m.message);
+      }
     };
     ws.onclose = () => {
       const s = loadSession();
       // Only redial a room we got into; a refused create/join just leaves the lobby showing the error.
-      if (s) retry = setTimeout(() => setTarget({ hello: rejoin(s), name: s.name, attempt: target.attempt + 1 }), RETRY_MS);
+      if (!s) return;
+      const attempt = joined ? 1 : target.attempt + 1;
+      if (attempt > MAX_ATTEMPTS) {
+        queue.current = [];
+        setError(UNREACHABLE);
+        return;
+      }
+      const delay = Math.min(RETRY_MS * 2 ** (attempt - 1), MAX_RETRY_MS);
+      retry = setTimeout(() => setTarget({ hello: rejoin(s), name: s.name, attempt }), delay);
     };
     return () => {
       clearTimeout(retry);
@@ -72,27 +100,31 @@ export function useGameSocket() {
     };
   }, [target]);
 
-  // A rejoin the server refuses (room expired) must not redial forever.
-  useEffect(() => {
-    if (error && !room) saveSession(null);
-  }, [error, room]);
-
   const send = useCallback((m: ClientMessage) => {
     if (socket.current?.readyState === WebSocket.OPEN) socket.current.send(JSON.stringify(m));
+    else if (queue.current.length < MAX_QUEUED) queue.current.push(m);
+    else setError("Not connected to the game server; that action wasn't sent.");
   }, []);
 
   const leave = useCallback(() => {
     send({ type: "leave" });
+    queue.current = [];
     saveSession(null);
     setTarget(null);
     setRoom(null);
+    setError(null);
   }, [send]);
+
+  const connect = (hello: ClientMessage, name: string) => {
+    queue.current = [];
+    setTarget({ hello, name, attempt: 0 });
+  };
 
   return {
     room,
     error,
-    create: (name: string) => setTarget({ hello: { type: "create", name }, name, attempt: 0 }),
-    join: (code: string, name: string) => setTarget({ hello: { type: "join", code, name }, name, attempt: 0 }),
+    create: (name: string) => connect({ type: "create", name }, name),
+    join: (code: string, name: string) => connect({ type: "join", code, name }, name),
     send,
     leave,
   };

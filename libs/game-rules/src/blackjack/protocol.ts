@@ -29,7 +29,8 @@ export interface SlotInfo {
 
 export interface RoomSnapshot {
   code: string;
-  you: { seat: number | null; isHost: boolean; actions: ReturnType<typeof getActiveHandActions> };
+  /** canDirect: may deal and start a new round (the host, or anyone while the host is disconnected). */
+  you: { seat: number | null; isHost: boolean; canDirect: boolean; actions: ReturnType<typeof getActiveHandActions> };
   /** One entry per seat position; null = empty. A seated player missing from table.seats sits out this round. */
   slots: (SlotInfo | null)[];
   table: PublicTable;

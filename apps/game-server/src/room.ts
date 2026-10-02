@@ -127,6 +127,7 @@ export class Room {
       you: {
         seat: p.slot,
         isHost: token === this.hostToken,
+        canDirect: this.canDirect(p),
         actions: mine >= 0 && mine === this.table.activeSeatIndex ? getActiveHandActions(this.table) : null,
       },
       slots: Array.from({ length: MAX_SEATS }, (_, i) => {
