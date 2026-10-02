@@ -110,3 +110,15 @@ test("reconnecting with the token from `joined` re-claims the seat on a fresh so
   expect(snap.you).toMatchObject({ seat: 2, isHost: true });
   again.ws.close();
 });
+
+test("an oversized frame closes only that socket; the server keeps serving", async () => {
+  const big = await connect(url);
+  const closed = new Promise<number>(resolve => big.ws.once("close", code => resolve(code)));
+  big.send("x".repeat(5000));
+  expect(await closed).toBe(1009);
+
+  const other = await connect(url);
+  other.send({ type: "create", name: "Ann" });
+  expect((await other.next(m => m.type === "joined")).type).toBe("joined");
+  other.ws.close();
+});

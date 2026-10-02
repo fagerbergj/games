@@ -98,6 +98,8 @@ function attach(ws: WebSocket, rooms: Map<string, Room>, roomOptions: RoomOption
       fail("internal error");
     }
   });
+  // Oversized or malformed frames surface here; without a listener the emitter throws and kills the process.
+  ws.on("error", e => console.error("game-server: socket error", e.message));
   ws.on("close", () => {
     if (room && token) room.disconnect(token, send);
   });

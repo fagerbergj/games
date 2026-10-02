@@ -208,8 +208,6 @@ export class Room {
     if (this.table.phase !== "betting") return "bets are closed";
     if (amount > this.table.seats[i].bankroll) return "not enough bankroll";
     this.table = placeBet(this.table, i, amount);
-    // Same as single-player: the deal goes out once every seat has a wager down.
-    if (this.table.seats.every(s => s.pendingBet > 0)) this.deal();
     return null;
   }
 
@@ -329,6 +327,9 @@ export class Room {
   }
 
   private afterChange() {
+    const t = this.table;
+    // Same as single-player: the deal goes out once every seat has a wager down, whichever change got it there.
+    if (t.phase === "betting" && t.seats.length > 0 && t.seats.every(s => s.pendingBet > 0)) this.deal();
     this.autoPlay();
     this.schedule();
     this.updateCount();

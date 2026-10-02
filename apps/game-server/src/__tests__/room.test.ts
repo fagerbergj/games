@@ -87,6 +87,15 @@ describe("joining and seats", () => {
   });
 });
 
+test("the last non-bettor leaving deals the table without the host", () => {
+  const room = newRoom();
+  stackDeck(room, [10, 7, 10, 6, 9, 8]);
+  const [a, b] = seated(room, "Ann", "Bob");
+  a.do({ type: "bet", amount: 10 });
+  b.do({ type: "leave" });
+  expect(a.snap().table.phase).toBe("playerTurns");
+});
+
 describe("authorisation", () => {
   test("betting needs a seat, the betting phase and enough bankroll", () => {
     const room = newRoom();
