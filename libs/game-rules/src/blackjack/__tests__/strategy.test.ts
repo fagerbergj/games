@@ -1,6 +1,6 @@
-import { getBookAdvice } from "../lib/strategy";
-import { DEFAULT_HOUSE_RULES } from "../lib/houseRules";
-import type { Card, HouseRules } from "../lib/types";
+import { getBookAdvice } from "../strategy";
+import { DEFAULT_HOUSE_RULES } from "../houseRules";
+import type { Card, HouseRules } from "../types";
 
 function card(rank: number): Card {
   return { id: `s-${rank}-${Math.random()}`, suit: "spades" as const, rank, faceUp: true };

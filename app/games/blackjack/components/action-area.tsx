@@ -5,11 +5,9 @@ import ActionButtons from "./action-buttons"
 import StrategyHint from "./strategy-hint"
 import InsuranceHint from "./insurance-hint"
 import CountTrigger from "./count-trigger"
-import { isBlackjack } from "../lib/engine"
+import { isBlackjack, STARTING_BANKROLL, type Card, type HouseRules, type Seat, type TablePhase } from "@game-rules/blackjack"
 import { MIN_CHIP_DENOMINATION } from "../lib/chips"
-import { STARTING_BANKROLL } from "../lib/bankroll"
 import { formatMoney } from "../lib/money"
-import type { Card, HouseRules, Seat, TablePhase } from "../lib/types"
 
 interface Actions {
   canHit: boolean

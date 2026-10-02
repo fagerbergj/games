@@ -1,4 +1,4 @@
-import { DECK_COUNT_OPTIONS, DEFAULT_DECK_COUNT } from "./shoe";
+import { DECK_COUNT_OPTIONS, DEFAULT_DECK_COUNT } from "@game-rules/blackjack";
 
 // Lives next to blackjack_bankroll (see bankroll.ts) so both survive reloads together.
 const DECK_COUNT_KEY = "blackjack_deck_count";

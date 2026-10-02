@@ -1,6 +1,6 @@
-import { calculatePayout, updateBankroll } from "../lib/engine";
-import { DEFAULT_HOUSE_RULES } from "../lib/houseRules";
-import type { Card } from "../lib/types";
+import { calculatePayout, updateBankroll } from "../engine";
+import { DEFAULT_HOUSE_RULES } from "../houseRules";
+import type { Card } from "../types";
 
 function makeHand(ranks: number[]): Card[] {
   return ranks.map((r, i) => ({ id: `c-${i}`, suit: "spades" as const, rank: r, faceUp: true }));
@@ -125,4 +125,16 @@ describe("updateBankroll", () => {
   test("a loss larger than the bankroll floors at zero, it does not go negative", () => {
     expect(updateBankroll(20, -50)).toBe(0);
   });
+});
+
+/* ------------------------------------------------------------------ */
+/*  updateBankroll — pure arithmetic                                   */
+/* ------------------------------------------------------------------ */
+
+describe("updateBankroll", () => {
+  test("win normal — balance increases by bet",   ()     => { expect(updateBankroll(500, 100)).toBe(600); });
+  test("loss — balance decreases by bet",          ()     => { expect(updateBankroll(500, -100)).toBe(400); });
+  test("push — no change",                         ()     => { expect(updateBankroll(500, 0 )).toBe(500); });
+  test("blackjack win (+bet*1.5)",                 ()     => { expect(updateBankroll(500, 250)).toBe(750); });
+  test("clamped at zero — overshoot from low balance", ()   => { expect(updateBankroll(30, -60)).toBe(0); });
 });

@@ -1,6 +1,6 @@
 "use client"
 
-import type { Card, HouseRules, Seat, TablePhase } from "../lib/types"
+import type { Card, HouseRules, Seat, TablePhase } from "@game-rules/blackjack"
 import PlayerHand from "./player-hand"
 import ActionArea from "./action-area"
 import BankrollTray from "./bankroll-tray"

@@ -19,7 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@game-rules/*": ["./libs/game-rules/src/*"]
     },
     "types": ["vitest/globals"]
   },

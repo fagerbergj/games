@@ -1,8 +1,7 @@
 "use client"
 import Card from "./card"
 import CardGhost from "./card-ghost"
-import { calculateHandValue } from "../lib/engine"
-import type { Card as GameCard } from "../lib/types"
+import { calculateHandValue, type Card as GameCard } from "@game-rules/blackjack"
 
 interface Props {
   cards: readonly GameCard[]

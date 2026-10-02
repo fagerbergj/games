@@ -1,0 +1,6 @@
+{
+  "name": "game-rules",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/game-rules/src",
+  "projectType": "library"
+}

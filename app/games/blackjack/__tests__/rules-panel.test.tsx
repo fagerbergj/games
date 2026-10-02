@@ -1,7 +1,6 @@
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import RulesPanel from "../components/rules-panel";
-import { DEFAULT_HOUSE_RULES } from "../lib/houseRules";
-import { DEFAULT_DECK_COUNT } from "../lib/shoe";
+import { DEFAULT_HOUSE_RULES, DEFAULT_DECK_COUNT } from "@game-rules/blackjack";
 
 function setup() {
   const onRulesChange = vi.fn();

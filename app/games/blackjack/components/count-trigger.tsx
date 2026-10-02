@@ -1,7 +1,7 @@
 "use client"
 import { usePopoverDismiss } from "../hooks/usePopoverDismiss"
 import CountPanel from "./count-panel"
-import type { Card } from "../lib/types"
+import type { Card } from "@game-rules/blackjack"
 
 interface Props {
   runningCount: number

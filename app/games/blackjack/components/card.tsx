@@ -1,5 +1,5 @@
 "use client"
-import type { Card } from "../lib/types"
+import type { Card } from "@game-rules/blackjack"
 
 export default function Card({ card, className = "" }: { card: Card; className?: string }) {
   const suitSymbols: Record<string, string> = {

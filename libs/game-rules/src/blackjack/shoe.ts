@@ -1,5 +1,5 @@
-import { shuffle } from "./engine";
-import type { Card } from "./types";
+import { deckTag, shuffle } from "./engine";
+import type { Card, Rng } from "./types";
 
 export const DECK_COUNT_OPTIONS = [1, 2, 4, 6, 8] as const;
 export type DeckCount = (typeof DECK_COUNT_OPTIONS)[number];
@@ -13,19 +13,18 @@ const CARDS_PER_DECK = 52;
 // left in a 6-deck shoe) — matches typical casino penetration.
 export const PENETRATION_THRESHOLD = 0.25;
 
-let shoeIdCounter = 0;
-
 /** Build a shoe of `deckCount` standard decks (N copies of each card), shuffled together. */
-export function createShoe(deckCount: number): Card[] {
+export function createShoe(deckCount: number, rng: Rng = Math.random): Card[] {
+  const tag = deckTag(rng);
   const shoe: Card[] = [];
   for (let d = 0; d < deckCount; d++) {
     for (const suit of SUITS) {
       for (const rank of RANKS) {
-        shoe.push({ id: `shoe-${shoeIdCounter++}`, suit, rank, faceUp: true });
+        shoe.push({ id: `shoe-${tag}-${shoe.length}`, suit, rank, faceUp: true });
       }
     }
   }
-  return shuffle(shoe);
+  return shuffle(shoe, rng);
 }
 
 /** True once the shoe has been drawn down past the penetration threshold. */

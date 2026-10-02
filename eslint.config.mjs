@@ -20,6 +20,14 @@ const eslintConfig = defineConfig([
     files: ["**/__tests__/**", "**/*.test.*", "**/*.stories.*"],
     rules: { "max-lines": "off", "max-lines-per-function": "off" },
   },
+  {
+    // Rules libs run on the game server too, so no framework or browser APIs.
+    files: ["libs/**"],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: ["react", "react-dom", "react/*", "next", "next/*"] }],
+      "no-restricted-globals": ["error", "window", "document", "localStorage", "sessionStorage", "navigator"],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

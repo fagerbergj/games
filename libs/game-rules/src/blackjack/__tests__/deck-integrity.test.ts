@@ -1,4 +1,4 @@
-import { shuffledDeck, drawCard, dealerDraw, calculateHandValue } from "../lib/engine";
+import { shuffledDeck, drawCard, dealerDraw, calculateHandValue } from "../engine";
 
 /**
  * Property-style regression for the duplicate-card bug: deals many hands off

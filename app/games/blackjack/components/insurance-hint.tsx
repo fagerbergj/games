@@ -1,5 +1,5 @@
 "use client"
-import { getInsuranceAdvice } from "../lib/strategy"
+import { getInsuranceAdvice } from "@game-rules/blackjack"
 
 interface Props {
   trueCount: number

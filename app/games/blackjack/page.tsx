@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useBlackjack } from "./hooks/useBlackjack";
-import { isBlackjack } from "./lib/engine";
+import { isBlackjack } from "@game-rules/blackjack";
 import DealerHand from "./components/dealer-hand";
 import SeatPanel from "./components/seat-panel";
 import RulesPanel from "./components/rules-panel";

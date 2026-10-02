@@ -4,8 +4,8 @@ import { getHouseRules } from "../lib/houseRules";
 
 let mockRanks: number[] = [];
 let idc = 0;
-vi.mock("../lib/shoe", async () => {
-  const actual = await vi.importActual<typeof import("../lib/shoe")>("../lib/shoe");
+vi.mock("@game-rules/blackjack/shoe", async () => {
+  const actual = await vi.importActual<typeof import("@game-rules/blackjack/shoe")>("@game-rules/blackjack/shoe");
   return {
     ...actual,
     createShoe: () => mockRanks.map((rank) => ({ id: `shoe-m-${idc++}`, suit: "spades" as const, rank, faceUp: true })),
