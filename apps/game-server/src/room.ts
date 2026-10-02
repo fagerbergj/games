@@ -252,7 +252,8 @@ export class Room {
     const insure = INSURANCE_MOVES[move];
     let next = t;
     if (move === "buyBackIn") {
-      if (t.phase !== "betting" || t.seats[i].bankroll >= MIN_CHIP) return "buy-back is only for a broke seat between rounds";
+      const between = t.phase === "betting" || t.phase === "result";
+      if (!between || t.seats[i].bankroll >= MIN_CHIP) return "buy-back is only for a broke seat between rounds";
       next = resetSeatBankroll(t, i);
     } else if (insure) {
       if (t.phase !== "insurance") return "insurance isn't on offer";

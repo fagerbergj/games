@@ -6,6 +6,7 @@ import ActionArea from "./action-area"
 import BankrollTray from "./bankroll-tray"
 import ChipStack from "./chip-stack"
 import ResultBanner from "./result-banner"
+import { formatMoney } from "../lib/money"
 
 interface Actions {
   canHit: boolean
@@ -47,6 +48,8 @@ interface Props {
   countOpen: boolean
   onToggleCount: () => void
   onCloseCount: () => void
+  /** Another player's seat at a multiplayer table: shown, but with none of its controls. */
+  readOnly?: boolean
 }
 
 const SETTLE_VARIANT: Record<string, "win" | "loss" | "push"> = {
@@ -58,7 +61,7 @@ export default function SeatPanel({
   onPlaceBet, onHit, onStand, onDouble, onSplit, onSurrender,
   onTakeInsurance, onDeclineInsurance, onTakeEvenMoney, onResetBankroll, onBuyBackIn, onResetRound,
   runningCount, decksRemaining, lastCountedCard, countVisible, onToggleCountVisible, justReshuffled,
-  countOpen, onToggleCount, onCloseCount,
+  countOpen, onToggleCount, onCloseCount, readOnly = false,
 }: Props) {
   return (
     <div className={`bg-white/5 border rounded-2xl p-3 sm:p-4 flex flex-col items-center gap-2 ${isActiveSeat ? "border-yellow-500" : "border-white/10"}`}>
@@ -92,7 +95,11 @@ export default function SeatPanel({
       ) : null}
 
       <div data-testid="action-zone" className="min-h-[3rem] w-full flex flex-col items-center justify-center gap-2">
-        <ActionArea
+        {readOnly ? (
+          phase === "betting" && (
+            <p className="text-zinc-500 text-xs">{seat.pendingBet > 0 ? `Bet ${formatMoney(seat.pendingBet)}` : "Choosing a bet…"}</p>
+          )
+        ) : <ActionArea
           seat={seat}
           phase={phase}
           isActiveSeat={isActiveSeat}
@@ -114,10 +121,10 @@ export default function SeatPanel({
           countOpen={countOpen}
           onToggleCount={onToggleCount}
           onCloseCount={onCloseCount}
-        />
+        />}
       </div>
 
-      {phase === "result" && seat.bankroll <= 0 && (
+      {!readOnly && phase === "result" && seat.bankroll <= 0 && (
         <button type="button" onClick={onResetBankroll}
           className="min-h-11 flex items-center bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold py-2 px-4 rounded-lg">
           Reset Bankroll
