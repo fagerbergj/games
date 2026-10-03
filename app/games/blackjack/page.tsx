@@ -7,6 +7,14 @@ import DealerHand from "./components/dealer-hand";
 import SeatPanel from "./components/seat-panel";
 import RulesPanel from "./components/rules-panel";
 
+// The dark gradient renders only ~13 distinct green levels across the felt, which band on OLED panels.
+// Overlay-blended grey noise dithers the band edges without shifting the average colour.
+const FELT_NOISE = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' stitchTiles='stitch'/%3E%3CfeColorMatrix values='.33 .33 .33 0 0 .33 .33 .33 0 0 .33 .33 .33 0 0 0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.3'/%3E%3C/svg%3E\")";
+const FELT_BACKGROUND = {
+  backgroundImage: `${FELT_NOISE}, radial-gradient(ellipse at center, #0f3d24 0%, #0a2c1a 60%, #071f12 100%)`,
+  backgroundBlendMode: "overlay, normal",
+};
+
 export default function GamePage() {
   const {
     state, placeBet, setSeatCount, setHouseRules,
@@ -49,7 +57,8 @@ export default function GamePage() {
             so the page should flow and scroll like any normal page. */}
         <div
           data-testid="felt-table"
-          className="relative w-full max-w-6xl sm:min-h-[min(51.5rem,calc(100vh-4.5rem))] rounded-[2rem] sm:rounded-[2.5rem] border-4 sm:border-8 border-zinc-900 shadow-2xl px-3 sm:px-10 py-3 sm:py-4 flex flex-col gap-2 sm:gap-3 bg-[radial-gradient(ellipse_at_center,_#0f3d24_0%,_#0a2c1a_60%,_#071f12_100%)]"
+          className="relative w-full max-w-6xl sm:min-h-[min(51.5rem,calc(100vh-4.5rem))] rounded-[2rem] sm:rounded-[2.5rem] border-4 sm:border-8 border-zinc-900 shadow-2xl px-3 sm:px-10 py-3 sm:py-4 flex flex-col gap-2 sm:gap-3"
+          style={FELT_BACKGROUND}
         >
           {/* Fixed-height row regardless of phase -- the trigger pill itself is only
               actionable during betting, but its row never collapses/reappears. */}
