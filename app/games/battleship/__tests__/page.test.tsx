@@ -107,6 +107,26 @@ describe("placement", () => {
     expect(placementError(sent.fleet as Placement[])).toBeNull();
   });
 
+  test("clicking a placed ship, or its done button, picks it up in its own orientation", () => {
+    enter(createGame());
+    const grid = "Your fleet: placement";
+    const ships = screen.getByRole("list", { name: "Ships" });
+    fireEvent.click(within(ships).getByRole("button", { name: /destroyer/ }));
+    fireEvent.keyDown(cell(grid, "A1"), { key: "r" });
+    fireEvent.click(cell(grid, "A1")); // vertical destroyer on A1+A2
+    expect(cell(grid, "A2")).toHaveAccessibleName("A2, destroyer");
+    fireEvent.keyDown(cell(grid, "A1"), { key: "r" }); // back to horizontal
+    fireEvent.click(cell(grid, "A1"));
+    expect(cell(grid, "A1")).toHaveAccessibleName("A1, water");
+    expect(cell(grid, "A2")).toHaveAccessibleName("A2, water");
+    fireEvent.click(cell(grid, "D4")); // picking up restored vertical
+    expect(cell(grid, "D5")).toHaveAccessibleName("D5, destroyer");
+    expect(cell(grid, "E4")).toHaveAccessibleName("E4, water");
+    fireEvent.click(within(ships).getByRole("button", { name: /destroyer/ }));
+    expect(cell(grid, "D4")).toHaveAccessibleName("D4, water");
+    expect(within(ships).getByRole("button", { name: /destroyer/ })).toHaveAttribute("aria-pressed", "true");
+  });
+
   test("arrow keys move focus across the board", () => {
     enter(createGame());
     const a1 = cell("Your fleet: placement", "A1");
@@ -164,6 +184,15 @@ describe("battle", () => {
     expect(cell("Enemy board", "F1")).toHaveAccessibleName("F1, carrier");
     fireEvent.click(screen.getByRole("button", { name: "Play again" }));
     expect(ws.sent.at(-1)).toEqual({ type: "rematch" });
+  });
+
+  test("when the opponent leaves mid-game the header says so, not 'waiting for an opponent'", () => {
+    const ws = enter(playing());
+    const over: BattleshipState = { ...playing(), phase: "over", winner: 0 };
+    ws.push({ type: "state", room: snapshot(over, 0, { players: [{ name: "Ann", connected: true, host: true }, null] }) });
+    expect(screen.getByText("Opponent left")).toBeInTheDocument();
+    expect(screen.queryByText(/Waiting for an opponent/)).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("You won!");
   });
 
   test("a spectator sees both boards with neither fleet", () => {

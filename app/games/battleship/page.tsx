@@ -40,7 +40,7 @@ export default function BattleshipPage() {
             <p className="text-sm text-zinc-400">
               {room.you.seat === null ? "You're watching." : opponent
                 ? `Playing ${opponent.name}${opponent.connected ? "" : " (disconnected)"}${room.salvo ? " · salvo rules" : ""}`
-                : `Waiting for an opponent: share code ${room.code}`}
+                : room.phase === "over" ? "Opponent left" : `Waiting for an opponent: share code ${room.code}`}
             </p>
             <Room room={room} send={send} />
           </>
