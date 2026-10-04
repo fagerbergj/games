@@ -66,7 +66,7 @@ function createRoomAsAnn() {
   fireEvent.click(screen.getByRole("button", { name: "Create room" }));
   const ws = FakeSocket.last;
   ws.open();
-  expect(ws.sent).toEqual([{ type: "create", name: "Ann" }]);
+  expect(ws.sent).toEqual([{ type: "create", name: "Ann", game: "blackjack" }]);
   ws.push({ type: "joined", code: "K7QX2M", token: "tok" });
   return ws;
 }
@@ -104,7 +104,7 @@ test("a server error in the lobby is shown and the stored session is dropped", (
   render(<MultiplayerBlackjackPage />);
   const ws = FakeSocket.last;
   ws.open();
-  expect(ws.sent).toEqual([{ type: "join", code: "K7QX2M", name: "Ann", token: "old" }]);
+  expect(ws.sent).toEqual([{ type: "join", code: "K7QX2M", name: "Ann", token: "old", game: "blackjack" }]);
   ws.push({ type: "error", message: "no such room" });
   expect(screen.getByRole("alert")).toHaveTextContent("no such room");
   expect(sessionStorage.getItem("blackjack_mp_session")).toBeNull();
@@ -164,7 +164,7 @@ describe("reconnecting", () => {
     const again = FakeSocket.last;
     expect(again).not.toBe(ws);
     again.open();
-    expect(again.sent).toEqual([{ type: "join", code: "K7QX2M", name: "Ann", token: "tok" }]);
+    expect(again.sent).toEqual([{ type: "join", code: "K7QX2M", name: "Ann", token: "tok", game: "blackjack" }]);
     again.push({ type: "joined", code: "K7QX2M", token: "tok" });
     expect(again.sent.at(-1)).toEqual({ type: "bet", amount: 25 });
   });
