@@ -1,7 +1,7 @@
 // @vitest-environment node
 import type { Card } from "@game-rules/blackjack";
 import { parseClientMessage, type ClientMessage, type RoomSnapshot, type ServerMessage } from "@game-rules/blackjack/protocol";
-import { Room } from "../room";
+import { BlackjackRoom as Room } from "../games/blackjack";
 import { newRoomCode, sweepIdleRooms } from "../server";
 
 const BEAT = 100;
