@@ -3,13 +3,14 @@
  * (create, join, leave) and server replies. Each game adds its own in-room messages.
  */
 
-export const GAME_IDS = ["blackjack"] as const;
+export const GAME_IDS = ["blackjack", "battleship"] as const;
 export type GameId = (typeof GAME_IDS)[number];
 
 export type RoomMessage =
   /** No `game` means blackjack, the first game the server hosted. */
   | { type: "create"; name: string; game?: GameId }
-  | { type: "join"; code: string; name: string; token?: string }
+  /** With `game`, joining a room that plays something else is refused. */
+  | { type: "join"; code: string; name: string; token?: string; game?: GameId }
   | { type: "leave" };
 
 export type ServerMessage<View> =
@@ -26,19 +27,25 @@ export type Fields = Record<string, unknown> & { type: string };
 /** One validator per message type: the message, or an error string for the sender. */
 export type Parsers<M extends { type: string }> = { [T in M["type"]]: (m: Fields) => M | string };
 
+const isGame = (v: unknown): v is GameId => GAME_IDS.includes(v as GameId);
 export const isInt = (v: unknown, min: number, max: number) => Number.isInteger(v) && (v as number) >= min && (v as number) <= max;
 const cleanName = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, MAX_NAME_LENGTH) : "") || "Player";
 
 export const ROOM_PARSERS: Parsers<RoomMessage> = {
   create: m => {
-    if (m.game !== undefined && !GAME_IDS.includes(m.game as GameId)) return "unknown game";
-    return { type: "create", name: cleanName(m.name), ...(m.game ? { game: m.game as GameId } : {}) };
+    if (m.game !== undefined && !isGame(m.game)) return "unknown game";
+    return { type: "create", name: cleanName(m.name), ...(isGame(m.game) ? { game: m.game } : {}) };
   },
   join: m => {
     const code = typeof m.code === "string" ? m.code.trim().toUpperCase() : "";
     if (!ROOM_CODE_PATTERN.test(code)) return "room code must be 6 letters/digits";
     if (m.token !== undefined && (typeof m.token !== "string" || m.token.length > 64)) return "bad token";
-    return { type: "join", code, name: cleanName(m.name), ...(m.token ? { token: m.token as string } : {}) };
+    if (m.game !== undefined && !isGame(m.game)) return "unknown game";
+    return {
+      type: "join", code, name: cleanName(m.name),
+      ...(m.token ? { token: m.token as string } : {}),
+      ...(isGame(m.game) ? { game: m.game } : {}),
+    };
   },
   leave: () => ({ type: "leave" }),
 };
