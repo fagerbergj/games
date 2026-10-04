@@ -68,6 +68,7 @@ function attach(ws: WebSocket, rooms: Map<string, AnyRoom>, overrides: RoomOverr
     if (msg.type === "create" && rooms.size >= MAX_ROOMS) return fail("server is full");
     const target = msg.type === "create" ? GAMES[msg.game ?? "blackjack"](newRoomCode(rooms), overrides) : rooms.get(msg.code);
     if (!target) return fail("no such room");
+    if (msg.type === "join" && msg.game && msg.game !== target.game) return fail(`that room is playing ${target.game}`);
     rooms.set(target.code, target);
     room = target;
     token = target.join(msg.name, send, msg.type === "join" ? msg.token : undefined);

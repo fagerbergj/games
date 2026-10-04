@@ -1,35 +1,14 @@
 // @vitest-environment node
 import type { AddressInfo } from "node:net";
-import WebSocket from "ws";
 import type { Card } from "@game-rules/blackjack";
-import type { ClientMessage, RoomSnapshot, ServerMessage } from "@game-rules/blackjack/protocol";
+import type { ClientMessage, RoomSnapshot } from "@game-rules/blackjack/protocol";
+import type { BlackjackRoom } from "../games/blackjack";
 import { startGameServer } from "../server";
+import { connect as connectAs } from "./ws-client";
 
 type Server = ReturnType<typeof startGameServer>;
 
-/** A ws client that records every frame and can await the first one matching a predicate. */
-async function connect(url: string) {
-  const ws = new WebSocket(url);
-  const seen: ServerMessage[] = [];
-  const waiters: { pred: (m: ServerMessage) => boolean; resolve: (m: ServerMessage) => void }[] = [];
-  ws.on("message", data => {
-    const m = JSON.parse(data.toString()) as ServerMessage;
-    seen.push(m);
-    for (const w of waiters.filter(w => w.pred(m))) {
-      waiters.splice(waiters.indexOf(w), 1);
-      w.resolve(m);
-    }
-  });
-  await new Promise(resolve => ws.once("open", resolve));
-  const next = (pred: (m: ServerMessage) => boolean) => new Promise<ServerMessage>(resolve => waiters.push({ pred, resolve }));
-  return {
-    ws, seen,
-    send: (m: ClientMessage | string) => ws.send(typeof m === "string" ? m : JSON.stringify(m)),
-    next,
-    state: (pred: (r: RoomSnapshot) => boolean) =>
-      next(m => m.type === "state" && pred(m.room)).then(m => (m as Extract<ServerMessage, { type: "state" }>).room),
-  };
-}
+const connect = (url: string) => connectAs<RoomSnapshot, ClientMessage>(url);
 
 let server: Server;
 let url: string;
@@ -48,7 +27,7 @@ test("two players play a full round over real sockets", async () => {
 
   // Ann 10+9, Bob 10+6, dealer 9 up / 8 hole: no peek, no insurance, dealer stands on 17.
   const deck: Card[] = [10, 9, 10, 6, 9, 8, ...Array(200).fill(2)].map((rank, i) => ({ id: `t-${i}`, suit: "hearts", rank, faceUp: true }));
-  const room = server.rooms.get(code)!;
+  const room = server.rooms.get(code) as BlackjackRoom;
   room.table = { ...room.table, deck };
 
   const bob = await connect(url);
