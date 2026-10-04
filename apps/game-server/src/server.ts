@@ -1,10 +1,10 @@
 import { randomInt } from "node:crypto";
 import type { Server } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
-import { parseClientMessage, ROOM_CODE_ALPHABET, type ServerMessage } from "@game-rules/blackjack/protocol";
-import { Room, DEFAULT_ROOM_OPTIONS, type RoomOptions } from "./room";
+import { parseFrame, parseWith, ROOM_CODE_ALPHABET, ROOM_PARSERS, type RoomMessage, type ServerMessage } from "@game-rules/protocol";
+import { GAMES, type AnyRoom, type RoomOverrides } from "./games";
 
-export interface GameServerOptions extends Partial<RoomOptions> {
+export interface GameServerOptions extends RoomOverrides {
   /** Listen on this port, or attach to an existing http server. */
   port?: number;
   server?: Server;
@@ -24,7 +24,7 @@ export function newRoomCode(taken: { has(code: string): boolean }): string {
   }
 }
 
-export function sweepIdleRooms(rooms: Map<string, Room>, now: number, idleMs: number) {
+export function sweepIdleRooms(rooms: Map<string, AnyRoom>, now: number, idleMs: number) {
   for (const [code, room] of rooms) {
     if (room.emptySince !== null && now - room.emptySince >= idleMs) {
       room.dispose();
@@ -35,11 +35,10 @@ export function sweepIdleRooms(rooms: Map<string, Room>, now: number, idleMs: nu
 
 export function startGameServer(options: GameServerOptions = {}) {
   const { port, server, idleMs = 10 * 60_000, ...roomOverrides } = options;
-  const roomOptions: RoomOptions = { ...DEFAULT_ROOM_OPTIONS, ...roomOverrides };
-  const rooms = new Map<string, Room>();
+  const rooms = new Map<string, AnyRoom>();
   const wss = new WebSocketServer({ port, server, maxPayload: MAX_FRAME_BYTES });
 
-  wss.on("connection", ws => attach(ws, rooms, roomOptions));
+  wss.on("connection", ws => attach(ws, rooms, roomOverrides));
   const gc = setInterval(() => sweepIdleRooms(rooms, Date.now(), idleMs), GC_INTERVAL_MS);
   gc.unref();
 
@@ -56,31 +55,36 @@ export function startGameServer(options: GameServerOptions = {}) {
 }
 
 /** One socket's session: which room and player token it speaks for, if any. */
-function attach(ws: WebSocket, rooms: Map<string, Room>, roomOptions: RoomOptions) {
-  let room: Room | null = null;
+function attach(ws: WebSocket, rooms: Map<string, AnyRoom>, overrides: RoomOverrides) {
+  let room: AnyRoom | null = null;
   let token: string | null = null;
-  const send = (m: ServerMessage) => {
+  const send = (m: ServerMessage<unknown>) => {
     if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(m));
   };
   const fail = (message: string) => send({ type: "error", message });
 
+  const enter = (msg: Extract<RoomMessage, { type: "create" | "join" }>) => {
+    if (room) return fail("already in a room");
+    if (msg.type === "create" && rooms.size >= MAX_ROOMS) return fail("server is full");
+    const target = msg.type === "create" ? GAMES[msg.game ?? "blackjack"](newRoomCode(rooms), overrides) : rooms.get(msg.code);
+    if (!target) return fail("no such room");
+    rooms.set(target.code, target);
+    room = target;
+    token = target.join(msg.name, send, msg.type === "join" ? msg.token : undefined);
+  };
+
   const onMessage = (raw: string) => {
-    const msg = parseClientMessage(raw);
-    if (typeof msg === "string") return fail(msg);
-    if (msg.type === "create" || msg.type === "join") {
-      if (room) return fail("already in a room");
-      if (msg.type === "create" && rooms.size >= MAX_ROOMS) return fail("server is full");
-      const target = msg.type === "create" ? new Room(newRoomCode(rooms), roomOptions) : rooms.get(msg.code);
-      if (!target) return fail("no such room");
-      rooms.set(target.code, target);
-      room = target;
-      token = target.join(msg.name, send, msg.type === "join" ? msg.token : undefined);
-      return;
+    const frame = parseFrame(raw);
+    if (typeof frame === "string") return fail(frame);
+    if (frame.type === "create" || frame.type === "join") {
+      const msg = parseWith(frame, ROOM_PARSERS);
+      return typeof msg === "string" ? fail(msg) : enter(msg as Parameters<typeof enter>[0]);
     }
+    // In-room messages are parsed by the room, against its own game's schemas.
     if (!room || !token) return fail("create or join a room first");
-    const err = room.handle(token, msg, send);
+    const err = room.receive(token, frame, send);
     if (err) return fail(err);
-    if (msg.type === "leave") {
+    if (frame.type === "leave") {
       if (room.players.size === 0) {
         room.dispose();
         rooms.delete(room.code);
