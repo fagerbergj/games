@@ -36,7 +36,7 @@ export interface BattleshipSnapshot {
   winner: Seat | null;
   /** Shots the player on turn must fire. */
   shotsAllowed: number;
-  /** Time left on the turn clock when this snapshot was sent; null outside play. */
+  /** Time left on the turn clock when this snapshot was sent; null while no clock runs. */
   turnMsLeft: number | null;
   boards: [PublicBoard, PublicBoard];
 }

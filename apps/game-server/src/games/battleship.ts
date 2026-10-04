@@ -116,20 +116,25 @@ export class BattleshipRoom extends Room<BattleshipMessage, BattleshipSnapshot> 
   private autoPlay() {
     const s = this.state;
     const away = (seat: Seat) => this.ownerOf(seat)?.away ?? false;
-    const present = (seat: Seat) => !!this.ownerOf(seat)?.send;
     if (s.phase === "placing") {
       for (const seat of SEATS) {
-        if (away(seat) && present(other(seat)) && !s.boards[seat].ready) this.apply(placeFleet(this.state, seat, randomFleet(this.opts.rng)));
+        if (away(seat) && this.present(other(seat)) && !s.boards[seat].ready) this.apply(placeFleet(this.state, seat, randomFleet(this.opts.rng)));
       }
-    } else if (s.phase === "playing" && away(s.turn) && present(other(s.turn))) {
+    } else if (s.phase === "playing" && away(s.turn) && this.present(other(s.turn))) {
       this.apply(pass(s, s.turn));
     }
   }
 
+  private present(seat: Seat) {
+    return !!this.ownerOf(seat)?.send;
+  }
+
+  /** The turn clock, like autoPlay, runs only while the mover's opponent is connected and waiting. */
   private armClock() {
-    if (this.state === this.clocked) return;
+    const s = this.state;
+    if (s.phase !== "playing" || !this.present(other(s.turn))) return this.stopClock();
+    if (s === this.clocked) return;
     this.stopClock();
-    if (this.state.phase !== "playing") return;
     this.clocked = this.state;
     this.clockEndsAt = Date.now() + this.opts.turnMs;
     this.clock = setTimeout(() => {

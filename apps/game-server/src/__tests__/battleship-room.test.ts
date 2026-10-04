@@ -152,8 +152,12 @@ describe("turns", () => {
     const [a, b] = playing(r);
     r.disconnect(a.token, a.send);
     r.disconnect(b.token, b.send);
-    vi.advanceTimersByTime(AWAY);
+    vi.advanceTimersByTime(AWAY + TURN);
     expect(r.state.turn).toBe(0);
+    r.join("Ann", a.send, a.token);
+    expect(a.snap()).toMatchObject({ turn: 0, turnMsLeft: null });
+    r.join("Bob", b.send, b.token);
+    expect(a.snap()).toMatchObject({ turn: 0, turnMsLeft: TURN });
   });
 
   test("leaving mid-game concedes it", () => {
