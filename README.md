@@ -1,6 +1,6 @@
 # Games Server
 
-A Next.js-based games server with Kings Corner implementation.
+A Next.js-based games hub: Battleship, Blackjack (single-player and multiplayer) and Kings Corner.
 
 ## Getting Started
 
@@ -23,7 +23,16 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) to view the app.
 
-## Game Rules
+## Games
+
+| Game | Path | Players | Notes |
+| --- | --- | --- | --- |
+| Battleship | `/games/battleship` | 2 | Two players, one room code |
+| Blackjack | `/games/blackjack` | 1 | Single player vs the dealer |
+| Blackjack (multiplayer) | `/games/blackjack/multiplayer` | 1-5 | Shared table over the WebSocket server |
+| Kings Corner | `/games/kings-corner` | 2-4 | Card game strategy challenge |
+
+### Kings Corner rules
 
 - **Goal**: Fill the 4x4 grid with cards in valid positions
 - **Kings (K)**: Must go in corners (4 spots)
@@ -46,11 +55,22 @@ Open [http://localhost:3000](http://localhost:3000) to view the app.
 ```
 app/
 ├── games/
+│   ├── battleship/
+│   │   ├── __tests__/
+│   │   ├── components/
+│   │   └── page.tsx
+│   ├── blackjack/
+│   │   ├── __tests__/
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   ├── lib/
+│   │   ├── multiplayer/     # Multiplayer page, talks to apps/game-server
+│   │   └── page.tsx
 │   └── kings-corner/
-│       ├── __tests__/        # Test files
-│       ├── components/       # React components
-│       ├── hooks/           # Custom hooks
-│       ├── lib/            # Game logic
+│       ├── __tests__/
+│       ├── components/
+│       ├── hooks/
+│       ├── lib/
 │       └── page.tsx
 ├── icon.tsx
 ├── layout.tsx
@@ -60,6 +80,7 @@ apps/
 └── game-server/            # WebSocket server for multiplayer rooms (no React)
 libs/
 └── game-rules/src/
+    ├── battleship/         # Pure rules engine (no React/DOM), imported as @game-rules/battleship
     └── blackjack/          # Pure rules engine (no React/DOM), imported as @game-rules/blackjack
 ```
 
