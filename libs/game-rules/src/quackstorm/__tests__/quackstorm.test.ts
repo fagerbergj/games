@@ -154,6 +154,29 @@ describe("gate operations", () => {
     expect(out.bread).toBe(4);
     expect(out.breadEarned).toBe(4);
   });
+
+  test("only the direct continuations of a crossing keep the player's aim", () => {
+    // A plain fan-out (a ×3 gate on a lone shot) makes copies the player never
+    // aimed — none of them may earn the early-pop star credit.
+    const fanned = step(playing({ ducks: [duck(1, 50, 50.5)], gates: [gate(9, 50, { kind: "mul", value: 3 })] }));
+    expect(fanned.ducklings).toHaveLength(3);
+    expect(fanned.ducklings.every((d) => !d.aimed)).toBe(true);
+    // A survivor of the opener's subtractive toll continues the player's shot
+    // (one in, one out) — it keeps the aim, the toll as Keep damage, and a pop.
+    const opener = gate(9, 50, { kind: "sub", value: 4 }, { opener: true });
+    const crossed = [46, 48, 50, 52, 54].map((x, i) => duck(i + 1, x, 50.5));
+    const survivor = step(playing({ ducks: crossed, gates: [opener] }));
+    expect(survivor.ducklings).toHaveLength(1);
+    expect(survivor.ducklings[0].aimed).toBe(true);
+    expect(survivor.ducklings[0].dmg).toBe(4);
+    expect(survivor.ducklings[0].popsLeft).toBe(1);
+    // An angry survivor through a ×2 gate: the first offspring carries on its
+    // aim, the multiplied copy beyond it doesn't.
+    const angry = step(playing({ ducks: [duck(1, 50, 50.5, { dmg: 4, popsLeft: 1 })], gates: [gate(9, 50, { kind: "mul", value: 2 })] }));
+    expect(angry.ducklings).toHaveLength(2);
+    expect(angry.ducklings[0].aimed).toBe(true);
+    expect(angry.ducklings[1].aimed).toBe(false);
+  });
 });
 
 describe("gate tolls across steps", () => {
@@ -547,14 +570,34 @@ describe("stars reward play", () => {
   });
 
   test("the perfect bot's mean stars are at least the weak bot's (20 seeds, × opener, every level)", () => {
-    // The − opener's early-pop credit can outrun the × opener's clear time in
-    // star time (the credit is earned per aimed pop, not per opener), so the
-    // play-quality ranking is pinned on the × opener: the bot that feeds the
-    // gates early and pops before the kill line is the one the stars reward.
+    // Round-8: with the aim bookkeeping fixed, × is the higher-star opener on
+    // every level for both bots (pinned above), so within the × opener the
+    // play-quality ranking holds: the bot that feeds the gates early and pops
+    // before the kill line is the one the stars reward.
     for (const l of LEVELS) {
       const mean = (bot: (level: number, pick: 0 | 1, seed: number) => QuackstormState) =>
         SEEDS.reduce((sum, seed) => sum + bot(l.id, 0, seed).stars, 0) / SEEDS.length;
       expect(mean(play), `L${l.id} × mean`).toBeGreaterThanOrEqual(mean(playWeak));
+    }
+  });
+
+  test("the × opener earns strictly more mean stars than the − opener, every level (20 seeds, perfect and weak)", () => {
+    // Round-8 finding 1: the − opener used to earn as many stars as ×, or more —
+    // fan() gave every offspring of an angry crossing the player's aim, so the
+    // ×2 copies of − survivors earned the early-pop credit (L4: 21.1 credits per
+    // − run against 2.9 for ×), and a slow − clear beat a fast × one (L4 seed 4:
+    // − in 35.4 s for 3★ against × in 27.4 s for 2★). Only the first
+    // `crossing.length` offspring carry on the aim now; L1's three-star bar was
+    // re-measured to 790 with the credit; and the L3 opener is −3 — a higher
+    // toll would make − faster, because the anger damage equals the toll.
+    for (const l of LEVELS) {
+      for (const bot of [play, playWeak]) {
+        const stars = (pick: 0 | 1) => SEEDS.map((seed) => bot(l.id, pick, seed).stars);
+        const mean = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
+        expect(mean(stars(0)), `L${l.id} mean stars × > −`).toBeGreaterThan(mean(stars(1)));
+        const outruns = stars(0).filter((s, i) => stars(1)[i] > s).length;
+        expect(outruns, `L${l.id} − outruns × on ${outruns}/20 seeds`).toBeLessThanOrEqual(2);
+      }
     }
   });
 });

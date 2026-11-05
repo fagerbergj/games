@@ -165,9 +165,10 @@ function fan(
       x: straight ?? clamp(gate.x - gate.span + frac * 2 * gate.span, 1, WORLD.width - 1),
       y: gate.y - 1,
       big: false,
-      // The angry survivors keep the player's aim; the multiplied fan-out
-      // copies a gate makes of a crossing flock don't (the player never aimed them).
-      aimed: boost ? crossing[0].aimed : false,
+      // The direct continuations of the crossing ducklings (the first `crossing.length`
+      // offspring) keep the player's aim; the multiplied fan-out copies beyond them
+      // don't (the player never aimed those), so only real shots earn the star credit.
+      aimed: boost && i < crossing.length ? crossing[0].aimed : false,
       popsLeft: boost?.popsLeft ?? 0,
       dmg: boost?.dmg ?? 1,
     });

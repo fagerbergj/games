@@ -20,10 +20,11 @@ export interface Duckling {
   /** Geese this duckling may still pop without sinking (Big Mamas and angry survivors). */
   popsLeft: number;
   /**
-   * True when this duckling is a shot the player fired (or its angry lineage — a
-   * shot the opener's toll turned into a survivor). False for the multiplied
-   * fan-out copies a gate makes of a crossing flock: the player never aimed
-   * those. The star rating only credits pops by aimed ducks.
+   * True when this duckling directly continues a shot the player fired — the shot
+   * itself, or the first `crossing.length` offspring of an angry crossing (one per
+   * crossing duckling), which carry on the survivor's aim. The multiplied fan-out
+   * copies a gate makes beyond those are not aimed: the player never aimed them.
+   * The star rating only credits pops by aimed ducks.
    */
   aimed: boolean;
   /** Damage dealt to the Keep when it lands: 1 for normal ducks, the opener's value for angry survivors, 10 for Big Mamas. */

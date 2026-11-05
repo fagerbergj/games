@@ -97,7 +97,7 @@ export const LEVELS: LevelConfig[] = [
       { label: "×3", op: mul(3) },
       { label: "−3", op: sub(3) },
     ],
-    starTimes: { three: 820, two: 1500 },
+    starTimes: { three: 790, two: 1500 },
     firstGate: { x: 50, y: 78, span: 11, drift: 0 },
     upperGates: [
       { x: 40, y: 55, span: 16, drift: 0.12, op: null },
@@ -135,7 +135,7 @@ export const LEVELS: LevelConfig[] = [
     narrator: "Somewhere a goose is already filing a complaint.",
     choice: [
       { label: "×5", op: mul(5) },
-      { label: "−4", op: sub(4) },
+      { label: "−3", op: sub(3) },
     ],
     starTimes: { three: 1466, two: 1800 },
     firstGate: { x: 50, y: 78, span: 10.5, drift: 0.16 },
