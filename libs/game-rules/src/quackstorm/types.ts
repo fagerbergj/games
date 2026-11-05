@@ -39,6 +39,12 @@ export interface Gate {
   drift: number;
   op: GateOp | null;
   revealed: boolean;
+  /**
+   * How many ducklings have crossed this gate so far this level. The operation is
+   * taken as a toll from this running flock, so a −10 gate eats the first ten
+   * ducklings (even lone ones) and passes the rest one for one.
+   */
+  flock: number;
 }
 
 /** The two-gate fake-ad opener. */
@@ -73,6 +79,8 @@ export interface QuackstormState {
   choice: ChoiceGate[];
   narrator: string;
   stars: number;
+  /** Total bread earned on this level — what the win stars are judged by. */
+  breadEarned: number;
   /** Internal mulberry32 state for goose positions (order of spawning only). */
   rng: number;
 }
@@ -86,9 +94,14 @@ export const WORLD = {
 } as const;
 
 export const DUCK_SPEED = 0.75;
-export const GOOSE_SPEED = 0.4;
-export const GATE_DRIFT = 0.12;
-export const FIRE_COOLDOWN = 16;
+export const GOOSE_SPEED = 0.35;
+/** Steps between shots. One shot per 0.5 s at the fixed 60 fps step. */
+export const FIRE_COOLDOWN = 30;
+/**
+ * Win-star thresholds as a share of the level's Keep HP: the bread earned per Keep
+ * point is roughly constant, so a clean run lands near 1.0 and sloppy aim well below.
+ */
+export const STAR_RATIO = { one: 0.35, two: 0.7, three: 1.0 } as const;
 export const BIG_MAMA_POP = 10;
 export const BIG_MAMA_DAMAGE = 10;
 export const MAX_BREAD = 100;

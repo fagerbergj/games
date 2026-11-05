@@ -1,5 +1,5 @@
 import {
-  BIG_MAMA_DAMAGE, BIG_MAMA_POP, COLLIDE, DUCK_SPEED, FIRE_COOLDOWN, GOOSE_SPEED, MAX_BREAD, WORLD,
+  BIG_MAMA_DAMAGE, BIG_MAMA_POP, COLLIDE, CROSS_EPS, DUCK_SPEED, FIRE_COOLDOWN, GOOSE_SPEED, MAX_BREAD, STAR_RATIO, WORLD,
   type Duckling, type Gate, type GateOp, type Goose, type QuackstormState,
 } from "./types";
 import { LEVELS, levelConfig } from "./levels";
@@ -30,12 +30,17 @@ export function opLabel(op: GateOp | null): string {
   }
 }
 
-/** Stars on the win end-card, 0-3, by bread left. */
-export function starsFor(bread: number): number {
-  const ratio = bread / MAX_BREAD;
-  if (ratio >= 0.75) return 3;
-  if (ratio >= 0.4) return 2;
-  if (ratio > 0) return 1;
+/**
+ * Stars on the win end-card, 0-3. Judged by total bread earned against the level's
+ * Keep HP — stable and player-controlled (aim quality plus the opener pick). The
+ * meter left is not: a Big Mama empties it, so it only measures time since the last
+ * Big Mama.
+ */
+export function starsFor(breadEarned: number, keepMaxHp: number): number {
+  const ratio = keepMaxHp > 0 ? breadEarned / keepMaxHp : 0;
+  if (ratio >= STAR_RATIO.three) return 3;
+  if (ratio >= STAR_RATIO.two) return 2;
+  if (ratio >= STAR_RATIO.one) return 1;
   return 0;
 }
 
@@ -50,6 +55,7 @@ export function createLevel(levelId: number, seed: number = 1234): QuackstormSta
     drift: spec.drift,
     op: spec.op ? { ...spec.op } : null,
     revealed: spec.op !== null,
+    flock: 0,
   }));
   return {
     seed,
@@ -58,6 +64,7 @@ export function createLevel(levelId: number, seed: number = 1234): QuackstormSta
     keepHp: cfg.keepHp,
     keepMaxHp: cfg.keepHp,
     bread: 0,
+    breadEarned: 0,
     cannonX: WORLD.width / 2,
     holding: false,
     fireCooldown: 0,
@@ -90,6 +97,7 @@ export function chooseGate(state: QuackstormState, index: 0 | 1): QuackstormStat
     drift: cfg.firstGate.drift,
     op: { ...state.choice[index].op },
     revealed: true,
+    flock: 0,
   };
   return { ...state, gates: [...state.gates, gate], nextId: state.nextId + 1, phase: "playing" };
 }
@@ -111,14 +119,18 @@ function launch(st: QuackstormState, big: boolean): void {
   st.fireCooldown = FIRE_COOLDOWN;
 }
 
-/** Fan `count` ducklings out across the gate's zone, just above its line. */
-function fan(gate: Gate, count: number, nextId: () => number): Duckling[] {
+/**
+ * Fan `count` ducklings out across the gate's zone, just above its line. A lone
+ * pass-through (one in, one out) keeps the duckling's own x, so it paddles straight on.
+ */
+function fan(gate: Gate, count: number, crossing: Duckling[], nextId: () => number): Duckling[] {
   const ducks: Duckling[] = [];
   for (let i = 0; i < count; i++) {
+    const straight = count === 1 && crossing.length === 1 ? crossing[0].x : null;
     const frac = count === 1 ? 0.5 : i / (count - 1);
     ducks.push({
       id: nextId(),
-      x: clamp(gate.x - gate.span + frac * 2 * gate.span, 1, WORLD.width - 1),
+      x: straight ?? clamp(gate.x - gate.span + frac * 2 * gate.span, 1, WORLD.width - 1),
       y: gate.y - 1,
       big: false,
       popsLeft: 0,
@@ -127,23 +139,38 @@ function fan(gate: Gate, count: number, nextId: () => number): Duckling[] {
   return ducks;
 }
 
-/** Apply every gate a duckling crossed this step. Mutates `st.ducklings` and `st.bread`. */
+/**
+ * Apply every gate a duckling crossed this step. Each gate keeps a running count
+ * (`flock`) of everything that has passed through, and the operation is taken as a
+ * toll from that count: a −10 gate eats the first ten ducklings, then passes the rest
+ * one for one, instead of wiping out every duckling that crosses alone. A × gate also
+ * adds its net gain to the bread meter and the level's `breadEarned`.
+ * Mutates `st.ducklings`, `st.bread` and `st.breadEarned`.
+ */
 function applyGates(st: QuackstormState): void {
   const ordered = [...st.gates].sort((a, b) => a.y - b.y);
   for (const gate of ordered) {
     const crossing = st.ducklings.filter(
-      (d) => !d.big && Math.abs(d.x - gate.x) <= gate.span && d.y <= gate.y + 1e-3 && d.y + DUCK_SPEED >= gate.y - 1e-3,
+      (d) => !d.big && Math.abs(d.x - gate.x) <= gate.span && d.y <= gate.y + CROSS_EPS && d.y + DUCK_SPEED >= gate.y - CROSS_EPS,
     );
     if (crossing.length === 0) continue;
     if (gate.op === null) {
       gate.op = mysteryOp(st.seed, gate.id);
       gate.revealed = true;
     }
-    const after = applyOp(gate.op, crossing.length);
-    if (gate.op.kind === "mul") st.bread = Math.min(MAX_BREAD, st.bread + Math.max(0, after - crossing.length));
+    // What the gate has produced so far: nothing until the first crossing (the
+    // baseline f(0) of a +5 gate is not five ducks that already left the pad).
+    const before = gate.flock === 0 ? 0 : applyOp(gate.op, gate.flock);
+    gate.flock += crossing.length;
+    const out = Math.max(0, applyOp(gate.op, gate.flock) - before);
+    if (gate.op.kind === "mul") {
+      const gain = Math.max(0, out - crossing.length);
+      st.bread = Math.min(MAX_BREAD, st.bread + gain);
+      st.breadEarned += gain;
+    }
     const crossed = new Set(crossing.map((d) => d.id));
     st.ducklings = st.ducklings.filter((d) => !crossed.has(d.id));
-    st.ducklings = st.ducklings.concat(fan(gate, after, () => st.nextId++));
+    st.ducklings = st.ducklings.concat(fan(gate, out, crossing, () => st.nextId++));
   }
 }
 
@@ -162,6 +189,8 @@ function resolveCollisions(ducklings: Duckling[], geese: Goose[]): { ducklings: 
         if (d.popsLeft > 0) {
           d.popsLeft--;
           deadGeese.add(g.id);
+          // One pop per step: the next goose meets this Big Mama on a later step.
+          break;
         }
       } else {
         deadDucks.add(d.id);
@@ -193,7 +222,7 @@ function spawnWave(st: QuackstormState): void {
   for (let i = 0; i < st.waveSize; i++) {
     const [r, ns] = mulberryStep(st.rng);
     st.rng = ns;
-    st.geese.push({ id: st.nextId++, x: 8 + r * (WORLD.width - 16), y: WORLD.keepY + 2 });
+    st.geese.push({ id: st.nextId++, x: 8 + r * (WORLD.width - 16), y: WORLD.keepY + 6 });
   }
   st.waveNumber++;
   st.nextWaveAt += st.waveInterval;
@@ -236,7 +265,7 @@ export function step(state: QuackstormState): QuackstormState {
   if (st.keepHp <= 0) {
     st.keepHp = 0;
     st.phase = "won";
-    st.stars = starsFor(st.bread);
+    st.stars = starsFor(st.breadEarned, st.keepMaxHp);
   } else if (st.geese.some((g) => g.y >= WORLD.cannonY)) {
     st.phase = "lost";
   }
