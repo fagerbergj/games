@@ -1,6 +1,6 @@
 # Games Server
 
-A Next.js-based games hub: Battleship, Blackjack (single-player and multiplayer) and Kings Corner.
+A Next.js-based games hub: Battleship, Blackjack (single-player and multiplayer), Kings Corner and Quackstorm.
 
 ## Getting Started
 
@@ -31,6 +31,16 @@ Open [http://localhost:3000](http://localhost:3000) to view the app.
 | Blackjack | `/games/blackjack` | 1 | Single player vs the dealer |
 | Blackjack (multiplayer) | `/games/blackjack/multiplayer` | 1-5 | Shared table over the WebSocket server |
 | Kings Corner | `/games/kings-corner` | 2-4 | Card game strategy challenge |
+| Quackstorm | `/games/quackstorm` | 1 | Arcade: ducklings through lily-pad math gates |
+
+### Quackstorm rules
+
+- **River**: drag to aim the bread cannon, hold to fire ducklings upstream.
+- **Gates**: lily pads multiply or shrink the flock that crosses (`×3`, `−10`, `÷2`…); each duckling is counted once.
+- **Mystery eggs**: gates showing `?` reveal a seeded operation when first crossed.
+- **Goose Keep**: the goal — ducklings that reach it deal hits; geese march down to pop them.
+- **Big Mama**: a full bread meter fires a big duck that pushes through geese for a splash of damage.
+- **Win/lose**: the Keep at 0 wins; geese reaching the cannon lose.
 
 ### Kings Corner rules
 
@@ -72,6 +82,11 @@ app/
 │       ├── hooks/
 │       ├── lib/
 │       └── page.tsx
+│   └── quackstorm/
+│       ├── components/
+│       ├── hooks/
+│       ├── lib/
+│       └── page.tsx
 ├── icon.tsx
 ├── layout.tsx
 ├── page.tsx
@@ -81,7 +96,8 @@ apps/
 libs/
 └── game-rules/src/
     ├── battleship/         # Pure rules engine (no React/DOM), imported as @game-rules/battleship
-    └── blackjack/          # Pure rules engine (no React/DOM), imported as @game-rules/blackjack
+    ├── blackjack/          # Pure rules engine (no React/DOM), imported as @game-rules/blackjack
+    └── quackstorm/         # Pure, seeded, fixed-step engine (no React/DOM), imported as @game-rules/quackstorm
 ```
 
 Game rules that a server must also run live in `libs/game-rules` as framework-free
