@@ -17,8 +17,10 @@ export interface Duckling {
   x: number;
   y: number;
   big: boolean;
-  /** Geese a Big Mama may still pop before it gives up. */
+  /** Geese this duckling may still pop without sinking (Big Mamas and angry survivors). */
   popsLeft: number;
+  /** Damage dealt to the Keep when it lands: 1 for normal ducks, the opener's value for angry survivors, 10 for Big Mamas. */
+  dmg: number;
 }
 
 /** A goose marching down from the Keep. */
@@ -39,6 +41,15 @@ export interface Gate {
   drift: number;
   op: GateOp | null;
   revealed: boolean;
+  /**
+   * Marks the gate the player chose at the opener. When the level sets
+   * `survivorDmg`, a subtractive opener gate releases angry survivors with that
+   * much Keep damage and one goose-pop (and their offspring inherit it), so the
+   * wrong pick costs stars — not the level.
+   */
+  opener: boolean;
+  /** Level-configured survivor damage for this gate's angry survivors (L5's −5). */
+  survivorDmg?: number;
   /**
    * How many ducklings have crossed this gate since its toll last armed (at level
    * start and every TOLL_REARM_STEPS steps — not on every goose wave, so most
@@ -79,6 +90,9 @@ export interface QuackstormState {
   maxWaves: number;
   waveSize: number;
   waveInterval: number;
+  /** Horizontal band [x0, x1] goose x-positions are drawn from. Default is the full river; L1 narrows it to the central lane so a still-aiming new player's fire reaches. */
+  gooseX0: number;
+  gooseX1: number;
   choice: ChoiceGate[];
   narrator: string;
   stars: number;
@@ -100,6 +114,15 @@ export const DUCK_SPEED = 0.75;
 export const GOOSE_SPEED = 0.35;
 /** Steps between shots. One shot per 0.5 s at the fixed 60 fps step. */
 export const FIRE_COOLDOWN = 30;
+/**
+ * Vertical spacing between geese inside one wave: 21 world units is 60 steps at
+ * GOOSE_SPEED, so even the slowest single-shooter (one shot per FIRE_COOLDOWN)
+ * can pop every goose in a wave as each one crosses their aim line. Without it,
+ * three same-step geese are physically unpop-pable — the late player loses L4/L5
+ * no matter how good their aim. Off-screen (y<0) members of a staggered wave
+ * simply wait above the Keep, which is harmless.
+ */
+export const GOOSE_STAGGER = 21;
 /**
  * Win-star thresholds as a share of the level's Keep HP: the bread earned per Keep
  * point is roughly constant, so a clean run lands near 1.0 and sloppy aim well below.

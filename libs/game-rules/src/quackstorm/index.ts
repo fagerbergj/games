@@ -1,5 +1,5 @@
 import {
-  BIG_MAMA_DAMAGE, BIG_MAMA_POP, COLLIDE, CROSS_EPS, DUCK_SPEED, FIRE_COOLDOWN, GOOSE_SPEED, MAX_BREAD, STAR_RATIO, TOLL_REARM_STEPS, WORLD,
+  BIG_MAMA_DAMAGE, BIG_MAMA_POP, COLLIDE, CROSS_EPS, DUCK_SPEED, FIRE_COOLDOWN, GOOSE_SPEED, GOOSE_STAGGER, MAX_BREAD, STAR_RATIO, TOLL_REARM_STEPS, WORLD,
   type Duckling, type Gate, type GateOp, type Goose, type QuackstormState,
 } from "./types";
 import { LEVELS, levelConfig } from "./levels";
@@ -56,6 +56,7 @@ export function createLevel(levelId: number, seed: number = 1234): QuackstormSta
     op: spec.op ? { ...spec.op } : null,
     revealed: spec.op !== null,
     flock: 0,
+    opener: false,
   }));
   return {
     seed,
@@ -78,6 +79,8 @@ export function createLevel(levelId: number, seed: number = 1234): QuackstormSta
     maxWaves: cfg.goose.maxWaves,
     waveSize: cfg.goose.waveSize,
     waveInterval: cfg.goose.waveInterval,
+    gooseX0: cfg.goose.x0 ?? 8,
+    gooseX1: cfg.goose.x1 ?? 92,
     choice: cfg.choice.map((c) => ({ label: c.label, op: { ...c.op } })),
     narrator: cfg.narrator,
     stars: 0,
@@ -98,6 +101,8 @@ export function chooseGate(state: QuackstormState, index: 0 | 1): QuackstormStat
     op: { ...state.choice[index].op },
     revealed: true,
     flock: 0,
+    opener: true,
+    survivorDmg: cfg.survivorDmg,
   };
   return { ...state, gates: [...state.gates, gate], nextId: state.nextId + 1, phase: "playing" };
 }
@@ -114,7 +119,14 @@ export function setHolding(state: QuackstormState, holding: boolean): Quackstorm
 
 /** Launch one duckling (a Big Mama when the bread meter is full). Mutates `st`. */
 function launch(st: QuackstormState, big: boolean): void {
-  st.ducklings.push({ id: st.nextId++, x: st.cannonX, y: WORLD.cannonY, big, popsLeft: big ? BIG_MAMA_POP : 0 });
+  st.ducklings.push({
+    id: st.nextId++,
+    x: st.cannonX,
+    y: WORLD.cannonY,
+    big,
+    popsLeft: big ? BIG_MAMA_POP : 0,
+    dmg: big ? BIG_MAMA_DAMAGE : 1,
+  });
   if (big) st.bread = 0;
   st.fireCooldown = FIRE_COOLDOWN;
 }
@@ -122,8 +134,16 @@ function launch(st: QuackstormState, big: boolean): void {
 /**
  * Fan `count` ducklings out across the gate's zone, just above its line. A lone
  * pass-through (one in, one out) keeps the duckling's own x, so it paddles straight on.
+ * `boost` marks the angry survivors a subtractive opener releases: they keep paddling
+ * with extra Keep damage and one goose-pop instead of sinking on contact.
  */
-function fan(gate: Gate, count: number, crossing: Duckling[], nextId: () => number): Duckling[] {
+function fan(
+  gate: Gate,
+  count: number,
+  crossing: Duckling[],
+  nextId: () => number,
+  boost?: { dmg: number; popsLeft: number },
+): Duckling[] {
   const ducks: Duckling[] = [];
   for (let i = 0; i < count; i++) {
     const straight = count === 1 && crossing.length === 1 ? crossing[0].x : null;
@@ -133,7 +153,8 @@ function fan(gate: Gate, count: number, crossing: Duckling[], nextId: () => numb
       x: straight ?? clamp(gate.x - gate.span + frac * 2 * gate.span, 1, WORLD.width - 1),
       y: gate.y - 1,
       big: false,
-      popsLeft: 0,
+      popsLeft: boost?.popsLeft ?? 0,
+      dmg: boost?.dmg ?? 1,
     });
   }
   return ducks;
@@ -172,28 +193,36 @@ function applyGates(st: QuackstormState): void {
     }
     const crossed = new Set(crossing.map((d) => d.id));
     st.ducklings = st.ducklings.filter((d) => !crossed.has(d.id));
-    st.ducklings = st.ducklings.concat(fan(gate, out, crossing, () => st.nextId++));
+    // The opener's angry survivors, and their offspring: the sadness is contagious.
+    const boost =
+      gate.opener && gate.op.kind === "sub" && gate.survivorDmg !== undefined
+        ? { dmg: gate.survivorDmg, popsLeft: 1 }
+        : crossing.length > 0 && crossing.every((d) => d.dmg > 1)
+          ? { dmg: crossing[0].dmg, popsLeft: 1 }
+          : undefined;
+    st.ducklings = st.ducklings.concat(fan(gate, out, crossing, () => st.nextId++, boost));
   }
 }
 
-/** Duckling-goose meetings: normal ducks pop one for one; a Big Mama pops and keeps going. */
+/** Duckling-goose meetings: normal ducks pop one for one and sink; angry
+ * survivors (popsLeft 1) and Big Mamas pop and keep paddling. One pop per duckling
+ * per step: a duck that popped keeps paddling and meets the next goose later. */
 function resolveCollisions(ducklings: Duckling[], geese: Goose[]): { ducklings: Duckling[]; geese: Goose[] } {
   const deadDucks = new Set<number>();
   const deadGeese = new Set<number>();
+  const spent = new Set<number>();
   for (const g of geese) {
     if (deadGeese.has(g.id)) continue;
     for (const d of ducklings) {
-      if (deadDucks.has(d.id)) continue;
+      if (deadDucks.has(d.id) || spent.has(d.id)) continue;
       const dx = d.x - g.x;
       const dy = d.y - g.y;
       if (dx * dx + dy * dy >= COLLIDE * COLLIDE) continue;
-      if (d.big) {
-        if (d.popsLeft > 0) {
-          d.popsLeft--;
-          deadGeese.add(g.id);
-          // One pop per step: the next goose meets this Big Mama on a later step.
-          break;
-        }
+      if (d.popsLeft > 0) {
+        d.popsLeft--;
+        deadGeese.add(g.id);
+        spent.add(d.id);
+        break;
       } else {
         deadDucks.add(d.id);
         deadGeese.add(g.id);
@@ -212,7 +241,7 @@ function applyKeepDamage(ducklings: Duckling[], keepHp: number): { ducklings: Du
   let hp = keepHp;
   const survivors: Duckling[] = [];
   for (const d of ducklings) {
-    if (d.y <= WORLD.keepY) hp -= d.big ? BIG_MAMA_DAMAGE : 1;
+    if (d.y <= WORLD.keepY) hp -= d.big ? BIG_MAMA_DAMAGE : d.dmg;
     else survivors.push(d);
   }
   return { ducklings: survivors, keepHp: hp };
@@ -224,7 +253,13 @@ function spawnWave(st: QuackstormState): void {
   for (let i = 0; i < st.waveSize; i++) {
     const [r, ns] = mulberryStep(st.rng);
     st.rng = ns;
-    st.geese.push({ id: st.nextId++, x: 8 + r * (WORLD.width - 16), y: WORLD.keepY + 6 });
+    st.geese.push({
+      id: st.nextId++,
+      x: st.gooseX0 + r * (st.gooseX1 - st.gooseX0),
+      // Staggered: each goose in the wave waits GOOSE_STAGGER above the last, so a
+      // one-shot player can pop every member of the wave as it crosses their aim.
+      y: WORLD.keepY + 6 - i * GOOSE_STAGGER,
+    });
   }
   st.waveNumber++;
   st.nextWaveAt += st.waveInterval;

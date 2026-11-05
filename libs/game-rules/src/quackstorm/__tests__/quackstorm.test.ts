@@ -1,14 +1,14 @@
 import {
-  applyOp, BIG_MAMA_POP, BIG_MAMA_DAMAGE, createLevel, chooseGate, DUCK_SPEED, FIRE_COOLDOWN, LEVELS, mysteryOp,
-  opLabel, setAim, setHolding, step, starsFor, WORLD,
+  applyOp, BIG_MAMA_POP, BIG_MAMA_DAMAGE, COLLIDE, createLevel, chooseGate, DUCK_SPEED, FIRE_COOLDOWN,
+  GOOSE_STAGGER, LEVELS, mysteryOp, opLabel, setAim, setHolding, step, starsFor, WORLD,
   type Duckling, type Gate, type Goose, type GateOp, type QuackstormState,
 } from "..";
 
 const duck = (id: number, x: number, y: number, extra: Partial<Duckling> = {}): Duckling =>
-  ({ id, x, y, big: false, popsLeft: 0, ...extra });
+  ({ id, x, y, big: false, popsLeft: 0, dmg: 1, ...extra });
 
 const gate = (id: number, y: number, op: GateOp | null, extra: Partial<Gate> = {}): Gate =>
-  ({ id, x: 50, y, span: 40, drift: 0, op, revealed: op !== null, flock: 0, ...extra });
+  ({ id, x: 50, y, span: 40, drift: 0, op, revealed: op !== null, flock: 0, opener: false, ...extra });
 
 /** A ready-to-step level with a controlled set of ducklings, geese and gates. */
 function playing(overrides: { ducks?: Duckling[]; geese?: Goose[]; gates?: Gate[]; keepHp?: number } = {}): QuackstormState {
@@ -45,6 +45,30 @@ function playWeak(level: number, pick: 0 | 1, seed = 42): QuackstormState {
     const late = s.geese.filter((g) => g.y > 85);
     const target = late.length > 0 ? late.reduce((a, b) => (b.y > a.y ? b : a)) : firstGate;
     s = step(setAim(s, clampX(target.x)));
+  }
+  return s;
+}
+
+/** A one-shot bot: pops each goose exactly once, the step it crosses y > 60. If any
+ * goose slips through, the cannon was never fast enough — it measures the stagger. */
+function playOneShot(level: number, seed = 42): QuackstormState {
+  let s = setHolding(chooseGate(createLevel(level, seed), 0), true);
+  const shot = new Set<number>();
+  for (let i = 0; i < 36000 && s.phase === "playing"; i++) {
+    const firstGate = s.gates.reduce((a, b) => (b.y > a.y ? b : a));
+    const ready = s.geese.filter((g) => g.y > 60 && !shot.has(g.id));
+    const target = ready.length > 0 ? ready[0] : firstGate;
+    if (target !== firstGate && s.fireCooldown === 0) shot.add(target.id);
+    s = step(setAim(s, clampX(target.x)));
+  }
+  return s;
+}
+
+/** A brand-new player: never moves the aim (stays at the centre), just holds fire. */
+function playPassive(level: number, pick: 0 | 1, seed: number): QuackstormState {
+  let s = setHolding(chooseGate(createLevel(level, seed), pick), true);
+  for (let i = 0; i < 36000 && s.phase === "playing"; i++) {
+    s = step(s);
   }
   return s;
 }
@@ -142,7 +166,9 @@ describe("gate tolls across steps", () => {
     let out = playing({ ducks: eleven, gates: [gate(9, 50, { kind: "sub", value: 10 })] });
     for (let i = 0; i < 758 && out.phase === "playing"; i++) out = step(out);
     expect(out.waveNumber).toBe(1);
-    out = step({ ...out, ducklings: [duck(99, 50, 94)] });
+    // x 15: outside L1's central goose lane (46-54), so the shot cannot trade
+    // with the wave's goose on its way to the toll.
+    out = step({ ...out, ducklings: [duck(99, 15, 94)] });
     for (let i = 0; i < 70; i++) out = step(out);
     expect(out.ducklings).toHaveLength(1);
   });
@@ -176,8 +202,9 @@ describe("gate tolls across steps", () => {
     for (let i = 0; i < 480 && out.phase === "playing"; i++) out = step(out);
     const base = out.keepHp;
     for (let i = 480; i < 480 + waveInterval && out.phase === "playing"; i++) {
+      // x 15: outside L1's central goose lane (46-54), so no shot trades with a goose.
       out = i % FIRE_COOLDOWN === 0
-        ? step({ ...out, ducklings: [...out.ducklings, duck(3000 + i, 50, 94)] })
+        ? step({ ...out, ducklings: [...out.ducklings, duck(3000 + i, 15, 94)] })
         : step(out);
     }
     for (let i = 480 + waveInterval; i < 830 && out.phase === "playing"; i++) out = step(out);
@@ -341,11 +368,32 @@ describe("level difficulty", () => {
     for (let i = 1; i < times.length; i++) expect(times[i]).toBeGreaterThan(times[i - 1]);
   });
 
-  test("a late-rescue bot's losses rise from level 1 to level 5", () => {
-    const losses = LEVELS.map((l) => (playWeak(l.id, 0).phase === "lost" ? 1 : 0));
-    for (let i = 1; i < losses.length; i++) expect(losses[i]).toBeGreaterThanOrEqual(losses[i - 1]);
-    // The final level must beat the weak play; otherwise the curve has no teeth.
-    expect(losses[losses.length - 1]).toBe(1);
+  test("a late-rescue bot wins every level: no difficulty cliff", () => {
+    // The curve used to jump here: the weak bot won 20/20 at L3 but only 7/20 at L4
+    // and 0/20 at L5, because a whole goose wave marched down in step — faster than
+    // the cannon's cooldown, so late players had nothing they could reach. Waves are
+    // now staggered (GOOSE_STAGGER), so the same bot clears every level.
+    for (const l of LEVELS) {
+      expect(playWeak(l.id, 0).phase, `L${l.id}`).toBe("won");
+    }
+  });
+
+  test("a late-rescue bot's time to clear rises from level 1 to level 5", () => {
+    const times = LEVELS.map((l) => {
+      const s = playWeak(l.id, 0);
+      expect(s.phase).toBe("won");
+      return s.stepCount;
+    });
+    for (let i = 1; i < times.length; i++) expect(times[i]).toBeGreaterThan(times[i - 1]);
+  });
+
+  test("a one-shot bot pops every goose: the cannon can keep up with the waves", () => {
+    for (const l of LEVELS) {
+      const s = playOneShot(l.id);
+      // A goose that reaches the cannon ends the level as lost, so a win means
+      // every goose in the level was popped.
+      expect(s.phase, `L${l.id}`).toBe("won");
+    }
   });
 });
 
@@ -365,19 +413,142 @@ describe("full levels", () => {
     },
   );
 
-  test("level 5: the subtractive opener loses the round (seed 42)", () => {
-    expect(play(5, 0).phase).toBe("won");
-    expect(play(5, 1).phase).toBe("lost");
+  test("level 5: the subtractive opener no longer stalls the level (20 seeds)", () => {
+    // The −5 toll used to starve the whole 30-shot arm through the toll stack, and
+    // 7 of 20 seeds ran to the 600 s cap with a live cannon. Now the opener releases
+    // angry survivors (the level's survivorDmg), so the wrong pick costs stars:
+    // every seed still wins, every one of them slower than the × opener, and none
+    // drifts far from it.
+    for (let seed = 1; seed <= 20; seed++) {
+      const good = play(5, 0, seed);
+      const bad = play(5, 1, seed);
+      expect(good.phase, `seed ${seed} ×`).toBe("won");
+      expect(bad.phase, `seed ${seed} −`).toBe("won");
+      expect(bad.stepCount, `seed ${seed}`).toBeGreaterThan(good.stepCount);
+      expect(bad.stepCount, `seed ${seed}`).toBeLessThanOrEqual(good.stepCount * 1.5);
+    }
+  });
+});
+
+describe("opener survivors", () => {
+  const subOpen = () => {
+    const s = chooseGate(createLevel(5, 42), 1);
+    const opener = s.gates.find((g) => g.opener)!;
+    return { s, opener };
+  };
+
+  test("the L5 −5 opener releases angry survivors: Keep damage and one goose-pop each", () => {
+    const { s, opener } = subOpen();
+    // A small flock one step above the opener: 6 cross the −5 toll, 1 survives.
+    const xs = [47, 48.5, 50, 51.5, 53, 54.5];
+    let st = {
+      ...s,
+      ducklings: xs.map((x, i) => duck(i + 1, x, opener.y + 0.4)),
+      gates: [opener],
+    };
+    st = step(st);
+    const survivors = st.ducklings;
+    expect(survivors).toHaveLength(1);
+    expect(survivors[0].popsLeft).toBe(1);
+    expect(survivors[0].dmg).toBe(5);
   });
 
-  test("level 5: the subtractive opener is winnable at perfect aim, not a dead end", () => {
-    // The wrong opener must cost something, but a perfect player must still be able
-    // to win: at least half of twenty perfect-aim runs clear the level.
-    let wins = 0;
-    for (let seed = 1; seed <= 20; seed++) {
-      if (play(5, 1, seed).phase === "won") wins++;
+  test("an angry survivor pops a goose like a small Big Mama: pops, keeps paddling", () => {
+    const { s } = subOpen();
+    let st: QuackstormState = {
+      ...s,
+      // Already upstream of the opener toll, on the way to the Keep.
+      ducklings: [duck(1, 50, 70, { dmg: 5, popsLeft: 1 })],
+      gates: [],
+      geese: [{ id: 2, x: 50, y: 40.5 }],
+    };
+    for (let i = 0; i < 200 && st.ducklings.length > 0; i++) {
+      st = step(st);
+      if (st.geese.length === 0) break;
     }
-    expect(wins).toBeGreaterThanOrEqual(10);
+    expect(st.geese).toHaveLength(0);
+    expect(st.ducklings[0].popsLeft).toBe(0);
+    expect(st.ducklings[0].dmg).toBe(5);
+  });
+
+  test("an angry survivor's offspring inherit the anger at fan gates", () => {
+    const { s } = subOpen();
+    let st = {
+      ...s,
+      ducklings: [duck(1, 50, 48.4, { dmg: 5, popsLeft: 1 })],
+      gates: [{ ...gate(3, 48, { kind: "mul", value: 2 }), opener: false }],
+    };
+    st = step(st);
+    expect(st.ducklings).toHaveLength(2);
+    for (const d of st.ducklings) {
+      expect(d.dmg).toBe(5);
+      expect(d.popsLeft).toBe(1);
+    }
+  });
+
+  test("the multiplicative opener releases plain ducklings", () => {
+    const s = chooseGate(createLevel(5, 42), 0);
+    const opener = s.gates.find((g) => g.opener)!;
+    const xs = [47, 48.5, 50, 51.5, 53, 54.5];
+    let st = { ...s, ducklings: xs.map((x, i) => duck(i + 1, x, opener.y + 0.4)), gates: [opener] };
+    st = step(st);
+    expect(st.ducklings.length).toBeGreaterThan(0);
+    expect(st.ducklings.every((d) => d.dmg === 1 && d.popsLeft === 0)).toBe(true);
+  });
+
+  test("levels without survivorDmg keep plain subtractive openers", () => {
+    for (const id of [1, 2, 3, 4]) {
+      const s = chooseGate(createLevel(id, 42), 1);
+      const opener = s.gates.find((g) => g.opener)!;
+      const xs = [47, 48.5, 50, 51.5, 53, 54.5];
+      let st = { ...s, ducklings: xs.map((x, i) => duck(i + 1, x, opener.y + 0.4)), gates: [opener] };
+      st = step(st);
+      expect(st.ducklings.every((d) => d.dmg === 1 && d.popsLeft === 0), `L${id}`).toBe(true);
+    }
+  });
+});
+
+describe("goose waves", () => {
+  const spawnGeese = (s: QuackstormState): QuackstormState => {
+    let st = s;
+    for (let i = 0; i < 1200 && st.geese.length === 0 && st.phase === "playing"; i++) {
+      st = step(st);
+    }
+    return st;
+  };
+
+  test("geese in a wave are staggered by GOOSE_STAGGER, not marching in step", () => {
+    const s = spawnGeese(chooseGate(createLevel(5, 42), 0));
+    const ys = s.geese.map((g) => g.y).sort((a, b) => a - b);
+    expect(ys.length).toBeGreaterThanOrEqual(2);
+    // The wave's members keep exactly GOOSE_STAGGER between them (same speed).
+    expect(ys[0] - ys[1]).toBeCloseTo(-GOOSE_STAGGER, 5);
+  });
+
+  test("level 1's geese march the central lane a stationary aim can reach", () => {
+    const cfg = LEVELS[0];
+    const s = spawnGeese(chooseGate(createLevel(1, 1235), 0));
+    expect(s.geese.length).toBeGreaterThan(0);
+    for (const g of s.geese) {
+      expect(g.x).toBeGreaterThanOrEqual(cfg.goose.x0!);
+      expect(g.x).toBeLessThanOrEqual(cfg.goose.x1!);
+      // The lane fits inside the cannon's COLLIDE range of the centre: a player who
+      // never moves the aim still reaches every goose.
+      expect(Math.abs(g.x - 50)).toBeLessThan(COLLIDE);
+    }
+  });
+});
+
+describe("the new player", () => {
+  test("holding fire at the centre wins level 1 with either opener", () => {
+    // The exact seed and posture from the round-5 review: aim 50, fire held, no
+    // aim moves — the −2 opener used to lose it at 21.9 s.
+    expect(playPassive(1, 0, 1235).phase).toBe("won");
+    expect(playPassive(1, 1, 1235).phase).toBe("won");
+    for (let seed = 1; seed <= 20; seed++) {
+      expect(playPassive(1, 0, seed).phase, `seed ${seed} ×`).toBe("won");
+      expect(playPassive(1, 1, seed).phase, `seed ${seed} −`).toBe("won");
+    }
   });
 });
 
