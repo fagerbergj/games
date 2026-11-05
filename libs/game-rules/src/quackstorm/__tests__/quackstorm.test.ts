@@ -86,6 +86,15 @@ describe("gate tolls across steps", () => {
     expect(out.ducklings).toHaveLength(10);
   });
 
+  test("a +5 egg's five land on the first crossing, later crossings pass one for one", () => {
+    // Seven ducks in single file: the first becomes six, each of the other six
+    // passes straight through — the +N is a one-time boost, paid out of the toll.
+    const ducks = Array.from({ length: 7 }, (_, i) => duck(1040 + i, 50, 50.5 + i * 2));
+    let out = playing({ ducks, gates: [gate(9, 50, { kind: "add", value: 5 })] });
+    for (let i = 0; i < 200 && out.ducklings.some((d) => d.y > 50); i++) out = step(out);
+    expect(out.ducklings).toHaveLength(12);
+  });
+
   test("the running flock carries on: the toll is paid once, not per crossing", () => {
     // Five ducks cross, five more cross later: the −10 gate eats the first ten in total.
     const firstFive = Array.from({ length: 5 }, (_, i) => duck(1000 + i, 50, 50.5 + i * 2));
