@@ -3,3 +3,4 @@ import "@/app/games/kings-corner/metadata";
 import "@/app/games/blackjack/metadata";
 import "@/app/games/blackjack/multiplayer/metadata";
 import "@/app/games/battleship/metadata";
+import "@/app/games/quackstorm/metadata";
