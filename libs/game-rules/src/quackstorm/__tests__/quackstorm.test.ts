@@ -5,7 +5,7 @@ import {
 } from "..";
 
 const duck = (id: number, x: number, y: number, extra: Partial<Duckling> = {}): Duckling =>
-  ({ id, x, y, big: false, popsLeft: 0, dmg: 1, ...extra });
+  ({ id, x, y, big: false, popsLeft: 0, aimed: true, dmg: 1, ...extra });
 
 const gate = (id: number, y: number, op: GateOp | null, extra: Partial<Gate> = {}): Gate =>
   ({ id, x: 50, y, span: 40, drift: 0, op, revealed: op !== null, flock: 0, opener: false, ...extra });
@@ -89,6 +89,22 @@ function playPassive(level: number, pick: 0 | 1, seed: number): QuackstormState 
   let s = setHolding(chooseGate(createLevel(level, seed), pick), true);
   for (let i = 0; i < 36000 && s.phase === "playing"; i++) {
     s = step(s);
+  }
+  return s;
+}
+
+/** The goose-only player: perfect aim, but only at geese — the gates are pure
+ * scenery, and when no goose is out the aim simply stays put. If the river of
+ * geese gets deep enough it loses; the gates are the only way to finish in time. */
+function playGooseOnly(level: number, pick: 0 | 1, seed: number): QuackstormState {
+  let s = setHolding(chooseGate(createLevel(level, seed), pick), true);
+  for (let i = 0; i < 36000 && s.phase === "playing"; i++) {
+    if (s.geese.length > 0) {
+      const target = s.geese.reduce((a, b) => (b.y > a.y ? b : a));
+      s = step(setAim(s, clampX(target.x)));
+    } else {
+      s = step(s);
+    }
   }
   return s;
 }
@@ -433,17 +449,20 @@ describe("level difficulty", () => {
     }
   });
 
-  test("the late-reacter bot clears every level: no difficulty cliff between adjacent levels (20 seeds)", () => {
-    // Round-6 finding 2: the late-reacter win rate must not jump 20→0 between
-    // adjacent levels. It is the slowest player a level must still be clearable by
-    // (only aims at a goose past y=60, drags at 0.5 u/step, never aims the gates),
-    // so each level gets a floor of 15/20 — a cliff would drop a level to 0.
-    // Pinned on the − opener: its thinner, angrier stream makes the level longer
-    // (more geese to pop), so it is the harder of the two openers.
+  test("the late-reacter bot: no adjacent-level drop greater than 12/20 (20 seeds, − opener)", () => {
+    // Round-7: the round-6 15/20 floor "forbids F3" — a floor that
+    // high means a player who never aims the gates can still clear, so the gates
+    // don't decide the game. The pin is now a drop cap: between adjacent levels
+    // the late-reacter's win rate may fall at most 12/20, so difficulty still
+    // rises without a cliff. Pinned on the − opener: its thinner, angrier stream
+    // makes the level longer (more geese to pop), so it is the harder of the two
+    // openers.
     const SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
-    for (const l of LEVELS) {
-      const wins = SEEDS.filter((seed) => playLateReactor(l.id, 1, seed).phase === "won").length;
-      expect(wins, `L${l.id} late-reacter wins ${wins}/20`).toBeGreaterThanOrEqual(15);
+    const wins = LEVELS.map((l) =>
+      SEEDS.filter((seed) => playLateReactor(l.id, 1, seed).phase === "won").length,
+    );
+    for (let i = 1; i < wins.length; i++) {
+      expect(wins[i - 1] - wins[i], `L${i}→L${i + 1}: ${wins.join("→")}`).toBeLessThanOrEqual(12);
     }
   });
 
@@ -476,19 +495,82 @@ describe("level difficulty", () => {
   });
 });
 
+describe("gates decide the game", () => {
+  const SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
+
+  test("goose-only loses on each of L3–L5: the endless waves catch a player who never aims the gates (20 seeds, − opener)", () => {
+    // Round-7 (F3): the gates must decide the game. The goose-only bot
+    // (perfect aim at geese, the gates pure scenery) used to win 20/20 on every
+    // level; the endless waves after maxWaves make dawdling cost the level. The
+    // target is ≥3/20 losses per level with at least one opener — pinned on −,
+    // whose longer level puts the player deeper into the endless river.
+    for (const level of [3, 4, 5]) {
+      const losses = SEEDS.filter((seed) => playGooseOnly(level, 1, seed).phase === "lost").length;
+      expect(losses, `L${level} − losses ${losses}/20`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  test("goose-only still wins L1–L2: the endless river starts where the gates start to matter (20 seeds, both openers)", () => {
+    for (const level of [1, 2]) {
+      for (const pick of [0, 1] as const) {
+        for (const seed of SEEDS) {
+          expect(playGooseOnly(level, pick, seed).phase, `L${level} ${pick === 0 ? "×" : "−"} seed ${seed}`).toBe("won");
+        }
+      }
+    }
+  });
+
+  test("perfect and weak still win every level, both openers (20 seeds)", () => {
+    for (const l of LEVELS) {
+      for (const pick of [0, 1] as const) {
+        for (const seed of SEEDS) {
+          expect(play(l.id, pick, seed).phase, `perfect L${l.id} ${pick === 0 ? "×" : "−"} seed ${seed}`).toBe("won");
+          expect(playWeak(l.id, pick, seed).phase, `weak L${l.id} ${pick === 0 ? "×" : "−"} seed ${seed}`).toBe("won");
+        }
+      }
+    }
+  });
+});
+
+describe("stars reward play", () => {
+  const SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
+
+  test("the weak bot with × gets 3★ on at most 10/20 seeds, L2–L5 (20 seeds)", () => {
+    // Round-7 finding 3: the weak bot used to get 3★ on 20/20 seeds with × on
+    // L2 and L5 — stars didn't reward anything. Star time is clear time plus one
+    // fire-rate per goose that reached the kill line, minus one per aimed pop
+    // above it, so the gate-feeding bot is the one who outruns the threshold.
+    for (const level of [2, 3, 4, 5]) {
+      const three = SEEDS.filter((seed) => playWeak(level, 0, seed).stars === 3).length;
+      expect(three, `L${level} × 3★ ${three}/20`).toBeLessThanOrEqual(10);
+    }
+  });
+
+  test("the perfect bot's mean stars are at least the weak bot's (20 seeds, × opener, every level)", () => {
+    // The − opener's early-pop credit can outrun the × opener's clear time in
+    // star time (the credit is earned per aimed pop, not per opener), so the
+    // play-quality ranking is pinned on the × opener: the bot that feeds the
+    // gates early and pops before the kill line is the one the stars reward.
+    for (const l of LEVELS) {
+      const mean = (bot: (level: number, pick: 0 | 1, seed: number) => QuackstormState) =>
+        SEEDS.reduce((sum, seed) => sum + bot(l.id, 0, seed).stars, 0) / SEEDS.length;
+      expect(mean(play), `L${l.id} × mean`).toBeGreaterThanOrEqual(mean(playWeak));
+    }
+  });
+});
+
 describe("full levels", () => {
   test.each(LEVELS.map((l) => l.id))("level %i is winnable with the multiplicative opener", (id) => {
     expect(play(id, 0).phase).toBe("won");
   });
 
   test.each(LEVELS.slice(0, -1).map((l) => l.id))(
-    "level %i: the subtractive opener wins, but slower and starless",
+    "level %i: the subtractive opener wins, but slower",
     (id) => {
       const good = play(id, 0);
       const bad = play(id, 1);
       expect(bad.phase).toBe("won");
       expect(bad.stepCount).toBeGreaterThan(good.stepCount);
-      expect(bad.stars).toBeLessThan(good.stars);
     },
   );
 
@@ -496,7 +578,7 @@ describe("full levels", () => {
     // The −5 toll used to starve the whole 30-shot arm through the toll stack, and
     // 7 of 20 seeds ran to the 600 s cap with a live cannon. Now the opener releases
     // angry survivors carrying the toll (dmg = the opener's − value), so the wrong
-    // pick costs stars: every seed still wins, every one slower than the × opener, and none
+    // pick costs time: every seed still wins, every one slower than the × opener, and none
     // drifts far from it.
     for (let seed = 1; seed <= 20; seed++) {
       const good = play(5, 0, seed);
@@ -648,6 +730,26 @@ describe("the new player", () => {
     for (let seed = 1; seed <= 20; seed++) {
       expect(playPassive(1, 0, seed).phase, `seed ${seed} ×`).toBe("won");
       expect(playPassive(1, 1, seed).phase, `seed ${seed} −`).toBe("won");
+    }
+  });
+
+  test("the passive player: no 20→0 jump between adjacent levels (20 seeds, both openers)", () => {
+    // Round-7 finding 2: the passive cliff moved from L3→L4 to L2→L3 (passive
+    // won L2 20/20, then L3 0/20 with −). L2's lane (44–56) is now wider than
+    // L1's (46–54), so a centre aim starts missing the edge geese on L2; the
+    // measured ramp 20→13→2→0 (×) and 20→3→0→0 (−) keeps every adjacent pair
+    // from being a 20→0 cliff.
+    const SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
+    for (const pick of [0, 1] as const) {
+      const wins = LEVELS.map((l) =>
+        SEEDS.filter((seed) => playPassive(l.id, pick, seed).phase === "won").length,
+      );
+      for (let i = 1; i < wins.length; i++) {
+        expect(
+          wins[i - 1] === 20 && wins[i] === 0,
+          `L${i}→L${i + 1} ${pick === 0 ? "×" : "−"}: ${wins.join("→")}`,
+        ).toBe(false);
+      }
     }
   });
 });

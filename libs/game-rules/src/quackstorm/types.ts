@@ -19,6 +19,13 @@ export interface Duckling {
   big: boolean;
   /** Geese this duckling may still pop without sinking (Big Mamas and angry survivors). */
   popsLeft: number;
+  /**
+   * True when this duckling is a shot the player fired (or its angry lineage — a
+   * shot the opener's toll turned into a survivor). False for the multiplied
+   * fan-out copies a gate makes of a crossing flock: the player never aimed
+   * those. The star rating only credits pops by aimed ducks.
+   */
+  aimed: boolean;
   /** Damage dealt to the Keep when it lands: 1 for normal ducks, the opener's value for angry survivors, 10 for Big Mamas. */
   dmg: number;
 }
@@ -90,9 +97,21 @@ export interface QuackstormState {
   waveInterval: number;
   /** Vertical spacing between geese in one wave (the level's stagger or GOOSE_STAGGER). */
   waveStagger: number;
-  /** Horizontal band [x0, x1] goose x-positions are drawn from. Default is the full river; L1 narrows it to the central lane so a still-aiming new player's fire reaches. */
+  /** Horizontal band [x0, x1] goose x-positions are drawn from. Default is the full river; L1 narrows it to the 46–54 central lane, within a still centre aim's reach, and L2 widens it to 44–56 so a centre aim starts missing the edge geese. */
   gooseX0: number;
   gooseX1: number;
+  /**
+   * Endless phase: from this wave number on the waves grow by one goose every
+   * `endlessEvery` waves and never stop (−1 when the level has no endless phase —
+   * it stops at `maxWaves` instead). A player who dawdles long enough gets the
+   * river of geese that a player who aims the gates never meets.
+   */
+  endlessFrom: number;
+  endlessEvery: number;
+  /** Geese that crossed the kill line (LATE_GOOSE_Y) so far — the star rating charges for them. */
+  lateGeese: number;
+  /** Geese a player-aimed shot dropped above the kill line so far — the star rating credits them as proactive play. */
+  earlyPops: number;
   choice: ChoiceGate[];
   narrator: string;
   stars: number;
@@ -134,3 +153,10 @@ export const MAX_BREAD = 100;
 export const COLLIDE = 5;
 /** How far a duckling may sit above the line and still count as crossing this step. */
 export const CROSS_EPS = 0.001;
+/**
+ * The kill line: a goose this deep (y >= LATE_GOOSE_Y) is within about a shot of the
+ * cannon. Each goose that reaches it costs the star rating one fire-rate of time
+ * (LATE_GOOSE_PENALTY in the engine), so a player who manages the threat early
+ * outranks one who lets it drift.
+ */
+export const LATE_GOOSE_Y = 80;

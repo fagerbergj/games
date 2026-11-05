@@ -1,5 +1,5 @@
 import {
-  BIG_MAMA_DAMAGE, BIG_MAMA_POP, COLLIDE, CROSS_EPS, DUCK_SPEED, FIRE_COOLDOWN, GOOSE_SPEED, GOOSE_STAGGER, MAX_BREAD, TOLL_REARM_STEPS, WORLD,
+  BIG_MAMA_DAMAGE, BIG_MAMA_POP, COLLIDE, CROSS_EPS, DUCK_SPEED, FIRE_COOLDOWN, GOOSE_SPEED, GOOSE_STAGGER, LATE_GOOSE_Y, MAX_BREAD, TOLL_REARM_STEPS, WORLD,
   type Duckling, type Gate, type GateOp, type Goose, type QuackstormState,
 } from "./types";
 import { LEVELS, levelConfig } from "./levels";
@@ -30,11 +30,19 @@ export function opLabel(op: GateOp | null): string {
   }
 }
 
+/** Star-time cost of each goose that reached the kill line — and credit for each
+ * goose a player-aimed shot dropped above it: one fire-rate apiece. A faster,
+ * more proactive clear earns the stars. */
+export const LATE_GOOSE_PENALTY = FIRE_COOLDOWN;
+export const EARLY_POP_BONUS = FIRE_COOLDOWN;
+
 /** Clear-time star thresholds, in fixed steps: three stars for a fast clear, two
- * for a safe one, one for surviving at all. Judged by time because time is what
- * play quality buys in this game: a player who aims the gates and pops the geese
- * clears before a sloppy one, whatever either earns at the gates. (Bread earned
- * cannot rank players — two players feeding the same gates earn the same bread.)
+ * for a safe one, one for surviving at all. Judged by the clear time plus the
+ * cost of late geese (see the win branch of `step`): time is what play quality
+ * buys in this game — a player who aims the gates and pops the geese early
+ * clears before a sloppy one, and every goose they let down to the kill line
+ * costs a fire-rate of star time. (Bread earned cannot rank players — two
+ * players feeding the same gates earn the same bread.)
  */
 export function starsFor(steps: number, starTimes: { three: number; two: number }): number {
   if (steps <= starTimes.three) return 3;
@@ -80,6 +88,10 @@ export function createLevel(levelId: number, seed: number = 1234): QuackstormSta
     waveStagger: cfg.goose.stagger ?? GOOSE_STAGGER,
     gooseX0: cfg.goose.x0 ?? 8,
     gooseX1: cfg.goose.x1 ?? 92,
+    endlessFrom: cfg.goose.endless ? (cfg.goose.endless.from ?? cfg.goose.maxWaves) : -1,
+    endlessEvery: cfg.goose.endless?.every ?? 0,
+    lateGeese: 0,
+    earlyPops: 0,
     choice: cfg.choice.map((c) => ({ label: c.label, op: { ...c.op } })),
     narrator: cfg.narrator,
     stars: 0,
@@ -122,6 +134,7 @@ function launch(st: QuackstormState, big: boolean): void {
     x: st.cannonX,
     y: WORLD.cannonY,
     big,
+    aimed: true,
     popsLeft: big ? BIG_MAMA_POP : 0,
     dmg: big ? BIG_MAMA_DAMAGE : 1,
   });
@@ -152,6 +165,9 @@ function fan(
       x: straight ?? clamp(gate.x - gate.span + frac * 2 * gate.span, 1, WORLD.width - 1),
       y: gate.y - 1,
       big: false,
+      // The angry survivors keep the player's aim; the multiplied fan-out
+      // copies a gate makes of a crossing flock don't (the player never aimed them).
+      aimed: boost ? crossing[0].aimed : false,
       popsLeft: boost?.popsLeft ?? 0,
       dmg: boost?.dmg ?? 1,
     });
@@ -213,11 +229,18 @@ function applyGates(st: QuackstormState): void {
 
 /** Duckling-goose meetings: normal ducks pop one for one and sink; angry
  * survivors (popsLeft 1) and Big Mamas pop and keep paddling. One pop per duckling
- * per step: a duck that popped keeps paddling and meets the next goose later. */
-function resolveCollisions(ducklings: Duckling[], geese: Goose[]): { ducklings: Duckling[]; geese: Goose[] } {
+ * per step: a duck that popped keeps paddling and meets the next goose later.
+ * Also reports how many geese a player-aimed shot (not a Big Mama) dropped while
+ * the goose was still above the kill line — the star rating credits those as
+ * proactive play. */
+function resolveCollisions(
+  ducklings: Duckling[],
+  geese: Goose[],
+): { ducklings: Duckling[]; geese: Goose[]; earlyAimedPops: number } {
   const deadDucks = new Set<number>();
   const deadGeese = new Set<number>();
   const spent = new Set<number>();
+  let earlyAimedPops = 0;
   for (const g of geese) {
     if (deadGeese.has(g.id)) continue;
     for (const d of ducklings) {
@@ -229,10 +252,12 @@ function resolveCollisions(ducklings: Duckling[], geese: Goose[]): { ducklings: 
         d.popsLeft--;
         deadGeese.add(g.id);
         spent.add(d.id);
+        if (!d.big && d.aimed && g.y < LATE_GOOSE_Y) earlyAimedPops++;
         break;
       } else {
         deadDucks.add(d.id);
         deadGeese.add(g.id);
+        if (!d.big && d.aimed && g.y < LATE_GOOSE_Y) earlyAimedPops++;
         break;
       }
     }
@@ -240,6 +265,7 @@ function resolveCollisions(ducklings: Duckling[], geese: Goose[]): { ducklings: 
   return {
     ducklings: ducklings.filter((d) => !deadDucks.has(d.id)),
     geese: geese.filter((g) => !deadGeese.has(g.id)),
+    earlyAimedPops,
   };
 }
 
@@ -254,10 +280,20 @@ function applyKeepDamage(ducklings: Duckling[], keepHp: number): { ducklings: Du
   return { ducklings: survivors, keepHp: hp };
 }
 
-/** Spawn the next goose wave when its time comes. Mutates `st`. */
+/**
+ * Spawn the next goose wave when its time comes. Mutates `st`. On endless levels
+ * the waves never stop: once the wave count reaches `endlessFrom`, each wave
+ * grows by one goose every `endlessEvery` waves, so a player who dawdles
+ * eventually has to fight a stream the lone cannon cannot pop fast enough.
+ */
 function spawnWave(st: QuackstormState): void {
-  if (st.waveNumber >= st.maxWaves || st.stepCount < st.nextWaveAt) return;
-  for (let i = 0; i < st.waveSize; i++) {
+  if (st.stepCount < st.nextWaveAt) return;
+  if (st.endlessEvery === 0 && st.waveNumber >= st.maxWaves) return;
+  let size = st.waveSize;
+  if (st.endlessFrom >= 0 && st.waveNumber >= st.endlessFrom) {
+    size += Math.floor((st.waveNumber - st.endlessFrom) / st.endlessEvery);
+  }
+  for (let i = 0; i < size; i++) {
     const [r, ns] = mulberryStep(st.rng);
     st.rng = ns;
     st.geese.push({
@@ -282,6 +318,24 @@ function cloneState(s: QuackstormState): QuackstormState {
   };
 }
 
+/** Star time: clear time + one fire-rate per goose that reached the kill line −
+ * one credit per goose an aimed shot dropped above it: a faster, more proactive
+ * clear outranks a slower, reactive one. */
+function starTime(st: QuackstormState): number {
+  return st.stepCount + LATE_GOOSE_PENALTY * st.lateGeese - EARLY_POP_BONUS * st.earlyPops;
+}
+
+/** End the level on a dead Keep (starring the clear) or a goose at the cannon. */
+function finishIfDone(st: QuackstormState): void {
+  if (st.keepHp <= 0) {
+    st.keepHp = 0;
+    st.phase = "won";
+    st.stars = starsFor(starTime(st), (levelConfig(st.level) ?? LEVELS[0]).starTimes);
+  } else if (st.geese.some((g) => g.y >= WORLD.cannonY)) {
+    st.phase = "lost";
+  }
+}
+
 /** Advance the simulation one fixed step. The single source of game motion. */
 export function step(state: QuackstormState): QuackstormState {
   if (state.phase !== "playing") return state;
@@ -291,7 +345,13 @@ export function step(state: QuackstormState): QuackstormState {
   st.fireCooldown = Math.max(0, st.fireCooldown - 1);
 
   for (const d of st.ducklings) d.y -= DUCK_SPEED;
-  for (const g of st.geese) g.y += GOOSE_SPEED;
+  for (const g of st.geese) {
+    const prev = g.y;
+    g.y += GOOSE_SPEED;
+    // The kill line: each goose that gets this deep costs star time (see the
+    // win branch of step), so managing the threat early is what the stars reward.
+    if (prev < LATE_GOOSE_Y && g.y >= LATE_GOOSE_Y) st.lateGeese++;
+  }
   for (const gate of st.gates) {
     gate.x += gate.drift;
     if (gate.x < 6) { gate.x = 6; gate.drift *= -1; }
@@ -302,18 +362,13 @@ export function step(state: QuackstormState): QuackstormState {
   const hit = resolveCollisions(st.ducklings, st.geese);
   st.ducklings = hit.ducklings;
   st.geese = hit.geese;
+  st.earlyPops += hit.earlyAimedPops;
   const keep = applyKeepDamage(st.ducklings, st.keepHp);
   st.ducklings = keep.ducklings;
   st.keepHp = keep.keepHp;
   spawnWave(st);
 
-  if (st.keepHp <= 0) {
-    st.keepHp = 0;
-    st.phase = "won";
-    st.stars = starsFor(st.stepCount, (levelConfig(st.level) ?? LEVELS[0]).starTimes);
-  } else if (st.geese.some((g) => g.y >= WORLD.cannonY)) {
-    st.phase = "lost";
-  }
+  finishIfDone(st);
   st.stepCount++;
   // Toll re-arm on a fixed timer, not per goose wave: long enough that most single
   // shots at the fire rate pass through, frequent enough that a −10 still matters

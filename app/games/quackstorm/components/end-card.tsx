@@ -8,7 +8,7 @@ interface EndCardProps {
   onNext: () => void;
 }
 
-/** Short end card: stars (by bread earned) and replay / next-level buttons. */
+/** Short end card: stars (by clear time against the level's starTimes) and replay / next-level buttons. */
 export default function EndCard({ won, stars, isLastLevel, onReplay, onNext }: EndCardProps) {
   return (
     <div className="absolute inset-0 rounded-xl bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-6 text-center">
@@ -25,7 +25,7 @@ export default function EndCard({ won, stars, isLastLevel, onReplay, onNext }: E
         </div>
       )}
       <p className="text-zinc-300 text-sm">
-        {won ? "Bread earned sets the stars." : "A goose reached the cannon."}
+        {won ? "Faster clears earn more stars." : "A goose reached the cannon."}
       </p>
       <div className="flex gap-3">
         <button
