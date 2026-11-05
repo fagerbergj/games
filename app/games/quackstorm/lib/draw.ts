@@ -1,6 +1,10 @@
 import { opLabel, WORLD, MAX_BREAD, type QuackstormState } from "@game-rules/quackstorm";
 
-/** Screen-space helpers: the 100x100 world maps to the whole canvas. */
+/**
+ * Screen-space helpers: the 100x100 world maps to the whole canvas. Positions use
+ * the canvas's own (3:5) stretch, but shape radii use a uniform `us` scale so
+ * circles stay circles instead of tall ovals.
+ */
 function makeCtx(W: number, H: number) {
   return {
     W,
@@ -9,16 +13,17 @@ function makeCtx(W: number, H: number) {
     sy: (y: number) => (y / 100) * H,
     rx: (w: number) => (w / 100) * W,
     ry: (h: number) => (h / 100) * H,
+    us: W / 100,
   };
 }
 
 function ellipse(ctx: CanvasRenderingContext2D, c: ReturnType<typeof makeCtx>, x: number, y: number, rw: number, rh: number) {
   ctx.beginPath();
-  ctx.ellipse(c.sx(x), c.sy(y), c.rx(rw), c.ry(rh), 0, 0, Math.PI * 2);
+  ctx.ellipse(c.sx(x), c.sy(y), c.us * rw, c.us * rh, 0, 0, Math.PI * 2);
   ctx.fill();
 }
 
-function drawKeep(ctx: CanvasRenderingContext2D, c: ReturnType<typeof makeCtx>, state: QuackstormState) {
+function drawKeep(ctx: CanvasRenderingContext2D, c: ReturnType<typeof makeCtx>) {
   const barH = 7;
   ctx.fillStyle = "#1f2937";
   ctx.fillRect(0, 0, c.W, c.sy(barH));
@@ -30,12 +35,15 @@ function drawKeep(ctx: CanvasRenderingContext2D, c: ReturnType<typeof makeCtx>, 
   ctx.fillStyle = "#111827";
   const teeth = 12;
   for (let i = 0; i < teeth; i++) ctx.fillRect((i / teeth) * c.W, c.sy(barH), c.W / teeth - 4, c.sy(2));
-  // hit points
+}
+
+/** The Keep's hit points, drawn after the gates so a drifting gate can't cover them. */
+function drawKeepHp(ctx: CanvasRenderingContext2D, c: ReturnType<typeof makeCtx>, state: QuackstormState) {
   ctx.fillStyle = "#fde68a";
   ctx.font = `bold ${Math.round(c.H * 0.05)}px system-ui, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(`🏰 ${Math.max(0, state.keepHp)}`, c.W / 2, c.sy(barH + 9));
+  ctx.fillText(`🏰 ${Math.max(0, state.keepHp)}`, c.W / 2, c.sy(16));
 }
 
 function drawGates(ctx: CanvasRenderingContext2D, c: ReturnType<typeof makeCtx>, state: QuackstormState) {
@@ -72,13 +80,13 @@ function drawDucklings(ctx: CanvasRenderingContext2D, c: ReturnType<typeof makeC
 function drawGeese(ctx: CanvasRenderingContext2D, c: ReturnType<typeof makeCtx>, state: QuackstormState) {
   ctx.fillStyle = "#f8fafc";
   for (const g of state.geese) {
-    const s = 3;
+    const s = c.us * 3;
     const x = c.sx(g.x);
     const y = c.sy(g.y);
     ctx.beginPath();
-    ctx.moveTo(x, y + c.ry(s));
-    ctx.lineTo(x - c.rx(s), y - c.ry(s));
-    ctx.lineTo(x + c.rx(s), y - c.ry(s));
+    ctx.moveTo(x, y + s);
+    ctx.lineTo(x - s, y - s);
+    ctx.lineTo(x + s, y - s);
     ctx.closePath();
     ctx.fill();
   }
@@ -126,10 +134,22 @@ export function drawGame(ctx: CanvasRenderingContext2D, W: number, H: number, st
   ctx.fillStyle = water;
   ctx.fillRect(0, 0, W, H);
 
-  drawKeep(ctx, c, state);
+  drawKeep(ctx, c);
   drawGates(ctx, c, state);
+  drawKeepHp(ctx, c, state);
   drawDucklings(ctx, c, state);
   drawGeese(ctx, c, state);
   drawCannon(ctx, c, state);
   drawBread(ctx, c, state);
+  drawFlock(ctx, c, state);
+}
+
+/** The live flock size — the genre's main feedback, on the cannon strip. */
+function drawFlock(ctx: CanvasRenderingContext2D, c: ReturnType<typeof makeCtx>, state: QuackstormState) {
+  const pad = c.W * 0.04;
+  ctx.fillStyle = "#fde68a";
+  ctx.font = `bold ${Math.round(c.H * 0.026)}px system-ui, sans-serif`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(`🦆 ×${state.ducklings.length}`, pad, c.sy(98.5));
 }

@@ -7,7 +7,7 @@ registerGame({
   thumbnail: "/games/quackstorm/thumbnail.png",
   players: [1],
   difficulty: "medium",
-  duration: "3-8",
+  duration: "1-6",
 });
 
 export const games = [];
