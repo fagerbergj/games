@@ -22,6 +22,33 @@ function playing(overrides: { ducks?: Duckling[]; geese?: Goose[]; gates?: Gate[
   };
 }
 
+const clampX = (x: number) => Math.min(100, Math.max(0, x));
+
+/** A perfect-aim bot: pops the deepest urgent goose, otherwise feeds the first gate, always holding. */
+function play(level: number, pick: 0 | 1, seed = 42): QuackstormState {
+  let s = setHolding(chooseGate(createLevel(level, seed), pick), true);
+  for (let i = 0; i < 36000 && s.phase === "playing"; i++) {
+    const firstGate = s.gates.reduce((a, b) => (b.y > a.y ? b : a));
+    const urgent = s.geese.filter((g) => g.y > 40);
+    const target = urgent.length > 0 ? urgent.reduce((a, b) => (b.y > a.y ? b : a)) : firstGate;
+    s = step(setAim(s, clampX(target.x)));
+  }
+  return s;
+}
+
+/** A weak bot: feeds the first gate and only pops a goose once it is at y > 85 (barely in
+ * time) — models a player who mostly watches the gates. Always holding. */
+function playWeak(level: number, pick: 0 | 1, seed = 42): QuackstormState {
+  let s = setHolding(chooseGate(createLevel(level, seed), pick), true);
+  for (let i = 0; i < 36000 && s.phase === "playing"; i++) {
+    const firstGate = s.gates.reduce((a, b) => (b.y > a.y ? b : a));
+    const late = s.geese.filter((g) => g.y > 85);
+    const target = late.length > 0 ? late.reduce((a, b) => (b.y > a.y ? b : a)) : firstGate;
+    s = step(setAim(s, clampX(target.x)));
+  }
+  return s;
+}
+
 describe("gate operations", () => {
   test.each<[GateOp, number, number]>([
     [{ kind: "add", value: 5 }, 1, 6],
@@ -243,33 +270,49 @@ describe("level difficulty", () => {
       expect(Math.abs(b.firstGate.drift)).toBeGreaterThanOrEqual(Math.abs(a.firstGate.drift));
       expect(b.firstGate.span).toBeLessThanOrEqual(a.firstGate.span);
     }
+    // L1's first wave is the latest of all levels: a new player gets to watch the
+    // gates work before a goose decides for them.
+    expect(LEVELS[0].goose.waveInterval).toBeGreaterThan(
+      Math.max(...LEVELS.slice(1).map((l) => l.goose.waveInterval)),
+    );
+  });
+
+  test("the perfect-aim bot's time to clear rises from level 1 to level 5", () => {
+    const times = LEVELS.map((l) => {
+      const s = play(l.id, 0);
+      expect(s.phase).toBe("won");
+      return s.stepCount;
+    });
+    for (let i = 1; i < times.length; i++) expect(times[i]).toBeGreaterThan(times[i - 1]);
+  });
+
+  test("a late-rescue bot's losses rise from level 1 to level 5", () => {
+    const losses = LEVELS.map((l) => (playWeak(l.id, 0).phase === "lost" ? 1 : 0));
+    for (let i = 1; i < losses.length; i++) expect(losses[i]).toBeGreaterThanOrEqual(losses[i - 1]);
+    // The final level must beat the weak play; otherwise the curve has no teeth.
+    expect(losses[losses.length - 1]).toBe(1);
   });
 });
 
 describe("full levels", () => {
-  const clampX = (x: number) => Math.min(100, Math.max(0, x));
-
-  /** A perfect-aim bot: pops the deepest urgent goose, otherwise feeds the first gate, always holding. */
-  function play(level: number, pick: 0 | 1, seed = 42): QuackstormState {
-    let s = setHolding(chooseGate(createLevel(level, seed), pick), true);
-    for (let i = 0; i < 36000 && s.phase === "playing"; i++) {
-      const firstGate = s.gates.reduce((a, b) => (b.y > a.y ? b : a));
-      const urgent = s.geese.filter((g) => g.y > 40);
-      const target = urgent.length > 0 ? urgent.reduce((a, b) => (b.y > a.y ? b : a)) : firstGate;
-      s = step(setAim(s, clampX(target.x)));
-    }
-    return s;
-  }
-
   test.each(LEVELS.map((l) => l.id))("level %i is winnable with the multiplicative opener", (id) => {
     expect(play(id, 0).phase).toBe("won");
   });
 
-  test.each(LEVELS.map((l) => l.id))("level %i: the subtractive opener wins, but slower", (id) => {
-    const good = play(id, 0);
-    const bad = play(id, 1);
-    expect(bad.phase).toBe("won");
-    expect(bad.stepCount).toBeGreaterThan(good.stepCount);
+  test.each(LEVELS.slice(0, -1).map((l) => l.id))(
+    "level %i: the subtractive opener wins, but slower and starless",
+    (id) => {
+      const good = play(id, 0);
+      const bad = play(id, 1);
+      expect(bad.phase).toBe("won");
+      expect(bad.stepCount).toBeGreaterThan(good.stepCount);
+      expect(bad.stars).toBeLessThan(good.stars);
+    },
+  );
+
+  test("level 5: the subtractive opener loses the round", () => {
+    expect(play(5, 0).phase).toBe("won");
+    expect(play(5, 1).phase).toBe("lost");
   });
 });
 

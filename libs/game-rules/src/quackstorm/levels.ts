@@ -28,15 +28,19 @@ const div = (value: number): GateOp => ({ kind: "div", value });
 
 /**
  * Tuning notes: the opener gates are small on purpose (×3–×5 against −2–−5) so the
- * choice costs something but never settles the level — the upper gates, the geese and
- * the Big Mama decide the round. The first gate is narrow and drifts like the rest,
- * so the player has to aim it. Difficulty rises L1→L5 in Keep HP, goose spawn rate
- * and total geese; see the levels test.
+ * choice costs something, and at higher levels the wrong pick gets punishing — on L5 it
+ * loses the round outright, but on L1–L4 the upper gates, the geese and the Big Mama
+ * still decide it. The first gate is narrow and drifts like the rest, so the player
+ * has to aim it. Toll gates re-arm on every goose wave (see spawnWave), so a −10
+ * keeps mattering all level. L1's first wave is late on purpose: a new player should
+ * get to watch the gates work before a goose decides for them. Difficulty rises
+ * L1→L5 in Keep HP, goose arrival rate, total geese and — measured by the perfect-aim
+ * and weak bots in the difficulty tests — time to clear and loss rate; see the tests.
  */
 export const LEVELS: LevelConfig[] = [
   {
     id: 1,
-    keepHp: 120,
+    keepHp: 100,
     narrator: "One shot to riches, or a very sad pond. Choose, hero.",
     choice: [
       { label: "×3", op: mul(3) },
@@ -47,11 +51,11 @@ export const LEVELS: LevelConfig[] = [
       { x: 40, y: 55, span: 16, drift: 0.12, op: null },
       { x: 60, y: 32, span: 16, drift: -0.12, op: mul(2) },
     ],
-    goose: { waveSize: 1, waveInterval: 150, maxWaves: 14 },
+    goose: { waveSize: 1, waveInterval: 240, maxWaves: 14 },
   },
   {
     id: 2,
-    keepHp: 150,
+    keepHp: 180,
     narrator: "The geese heard about the bread. They brought friends.",
     choice: [
       { label: "×4", op: mul(4) },
@@ -84,7 +88,7 @@ export const LEVELS: LevelConfig[] = [
   },
   {
     id: 4,
-    keepHp: 260,
+    keepHp: 400,
     narrator: "Double the gates, double the regret. You're doing fine.",
     choice: [
       { label: "×4", op: mul(4) },
@@ -96,13 +100,13 @@ export const LEVELS: LevelConfig[] = [
       { x: 70, y: 54, span: 14, drift: -0.18, op: sub(10) },
       { x: 40, y: 42, span: 14, drift: 0.18, op: null },
       { x: 60, y: 30, span: 14, drift: -0.18, op: div(2) },
-      { x: 50, y: 20, span: 14, drift: 0.18, op: sub(10) },
+      { x: 50, y: 24, span: 14, drift: 0.18, op: sub(10) },
     ],
-    goose: { waveSize: 2, waveInterval: 160, maxWaves: 24 },
+    goose: { waveSize: 2, waveInterval: 120, maxWaves: 24 },
   },
   {
     id: 5,
-    keepHp: 320,
+    keepHp: 420,
     narrator: "Final gate. The Big Mama is listening. Make it count.",
     choice: [
       { label: "×5", op: mul(5) },
@@ -115,9 +119,9 @@ export const LEVELS: LevelConfig[] = [
       { x: 40, y: 48, span: 14, drift: 0.2, op: null },
       { x: 60, y: 38, span: 14, drift: -0.2, op: mul(2) },
       { x: 50, y: 28, span: 14, drift: 0.2, op: div(2) },
-      { x: 45, y: 19, span: 14, drift: -0.2, op: sub(10) },
+      { x: 45, y: 24, span: 14, drift: -0.2, op: sub(10) },
     ],
-    goose: { waveSize: 2, waveInterval: 155, maxWaves: 34 },
+    goose: { waveSize: 3, waveInterval: 150, maxWaves: 34 },
   },
 ];
 
