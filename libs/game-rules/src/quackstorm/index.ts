@@ -141,10 +141,11 @@ function fan(gate: Gate, count: number, crossing: Duckling[], nextId: () => numb
 
 /**
  * Apply every gate a duckling crossed this step. Each gate keeps a running count
- * (`flock`) of everything that has passed through, and the operation is taken as a
- * toll from that count: a −10 gate eats the first ten ducklings, then passes the rest
- * one for one, instead of wiping out every duckling that crosses alone. A × gate also
- * adds its net gain to the bread meter and the level's `breadEarned`.
+ * (`flock`) of everything that has passed through since its toll last armed, and the
+ * operation is taken as a toll from that count: a −10 gate eats the first ten ducklings,
+ * then passes the rest one for one, instead of wiping out every duckling that crosses
+ * alone. A new goose wave re-arms every toll (see `spawnWave`). A × gate also adds its
+ * net gain to the bread meter and the level's `breadEarned`.
  * Mutates `st.ducklings`, `st.bread` and `st.breadEarned`.
  */
 function applyGates(st: QuackstormState): void {
@@ -224,6 +225,9 @@ function spawnWave(st: QuackstormState): void {
     st.rng = ns;
     st.geese.push({ id: st.nextId++, x: 8 + r * (WORLD.width - 16), y: WORLD.keepY + 6 });
   }
+  // A new wave re-arms every toll: a −10 gate keeps eating ten on every wave, so toll
+  // gates matter all level instead of drying up after their first ten crossings.
+  for (const gate of st.gates) gate.flock = 0;
   st.waveNumber++;
   st.nextWaveAt += st.waveInterval;
 }

@@ -40,10 +40,11 @@ export interface Gate {
   op: GateOp | null;
   revealed: boolean;
   /**
-   * How many ducklings have crossed this gate so far this level. The operation is
-   * taken as a toll from this running flock, so a −10 gate eats the first ten
-   * ducklings (even lone ones) and passes the rest one for one. For a +N egg the
-   * N lands on the first crossing and later crossings pass one for one.
+   * How many ducklings have crossed this gate since its toll last armed (at level
+   * start and after every goose wave). The operation is taken as a toll from this
+   * running flock, so a −10 gate eats the first ten ducklings (even lone ones) and
+   * passes the rest one for one — on every wave. For a +N egg the N lands on the
+   * first crossing of each arm; later crossings pass one for one.
    */
   flock: number;
 }
