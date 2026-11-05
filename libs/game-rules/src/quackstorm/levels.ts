@@ -26,91 +26,98 @@ const mul = (value: number): GateOp => ({ kind: "mul", value });
 const sub = (value: number): GateOp => ({ kind: "sub", value });
 const div = (value: number): GateOp => ({ kind: "div", value });
 
+/**
+ * Tuning notes: the opener gates are small on purpose (×3–×5 against −2–−5) so the
+ * choice costs something but never settles the level — the upper gates, the geese and
+ * the Big Mama decide the round. The first gate is narrow and drifts like the rest,
+ * so the player has to aim it. Difficulty rises L1→L5 in Keep HP, goose spawn rate
+ * and total geese; see the levels test.
+ */
 export const LEVELS: LevelConfig[] = [
   {
     id: 1,
-    keepHp: 50,
+    keepHp: 120,
     narrator: "One shot to riches, or a very sad pond. Choose, hero.",
     choice: [
-      { label: "×100", op: mul(100) },
-      { label: "−1", op: sub(1) },
+      { label: "×3", op: mul(3) },
+      { label: "−2", op: sub(2) },
     ],
-    firstGate: { x: 50, y: 78, span: 30, drift: 0 },
+    firstGate: { x: 50, y: 78, span: 11, drift: 0.14 },
     upperGates: [
-      { x: 40, y: 55, span: 22, drift: 0.12, op: mul(2) },
-      { x: 60, y: 32, span: 22, drift: -0.12, op: null },
+      { x: 40, y: 55, span: 16, drift: 0.12, op: null },
+      { x: 60, y: 32, span: 16, drift: -0.12, op: mul(2) },
     ],
-    goose: { waveSize: 2, waveInterval: 240, maxWaves: 4 },
+    goose: { waveSize: 1, waveInterval: 150, maxWaves: 14 },
   },
   {
     id: 2,
-    keepHp: 100,
+    keepHp: 150,
     narrator: "The geese heard about the bread. They brought friends.",
     choice: [
-      { label: "×20", op: mul(20) },
-      { label: "÷2", op: div(2) },
+      { label: "×4", op: mul(4) },
+      { label: "−3", op: sub(3) },
     ],
-    firstGate: { x: 50, y: 78, span: 28, drift: 0 },
+    firstGate: { x: 50, y: 78, span: 11, drift: 0.15 },
     upperGates: [
-      { x: 35, y: 58, span: 20, drift: 0.14, op: mul(3) },
-      { x: 65, y: 44, span: 20, drift: -0.14, op: sub(10) },
-      { x: 45, y: 26, span: 20, drift: 0.14, op: null },
+      { x: 35, y: 58, span: 15, drift: 0.14, op: mul(2) },
+      { x: 65, y: 44, span: 15, drift: -0.14, op: sub(10) },
+      { x: 45, y: 26, span: 15, drift: 0.14, op: div(2) },
     ],
-    goose: { waveSize: 3, waveInterval: 200, maxWaves: 5 },
+    goose: { waveSize: 1, waveInterval: 140, maxWaves: 18 },
   },
   {
     id: 3,
     keepHp: 200,
     narrator: "Somewhere a goose is already filing a complaint.",
     choice: [
-      { label: "×50", op: mul(50) },
-      { label: "−5", op: sub(5) },
+      { label: "×5", op: mul(5) },
+      { label: "−3", op: sub(3) },
     ],
-    firstGate: { x: 50, y: 78, span: 26, drift: 0 },
+    firstGate: { x: 50, y: 78, span: 10.5, drift: 0.16 },
     upperGates: [
-      { x: 30, y: 62, span: 18, drift: 0.16, op: div(2) },
-      { x: 70, y: 50, span: 18, drift: -0.16, op: sub(10) },
-      { x: 45, y: 38, span: 18, drift: 0.16, op: null },
-      { x: 55, y: 24, span: 18, drift: -0.16, op: mul(3) },
+      { x: 30, y: 62, span: 15, drift: 0.16, op: sub(10) },
+      { x: 70, y: 50, span: 15, drift: -0.16, op: null },
+      { x: 45, y: 38, span: 15, drift: 0.16, op: div(2) },
+      { x: 55, y: 24, span: 15, drift: -0.16, op: mul(2) },
     ],
-    goose: { waveSize: 4, waveInterval: 180, maxWaves: 6 },
+    goose: { waveSize: 1, waveInterval: 120, maxWaves: 24 },
   },
   {
     id: 4,
-    keepHp: 350,
+    keepHp: 260,
     narrator: "Double the gates, double the regret. You're doing fine.",
     choice: [
-      { label: "×75", op: mul(75) },
-      { label: "−10", op: sub(10) },
+      { label: "×4", op: mul(4) },
+      { label: "−4", op: sub(4) },
     ],
-    firstGate: { x: 50, y: 78, span: 24, drift: 0 },
+    firstGate: { x: 50, y: 78, span: 10, drift: 0.17 },
     upperGates: [
-      { x: 30, y: 64, span: 16, drift: 0.18, op: mul(3) },
-      { x: 70, y: 54, span: 16, drift: -0.18, op: sub(10) },
-      { x: 40, y: 42, span: 16, drift: 0.18, op: null },
-      { x: 60, y: 30, span: 16, drift: -0.18, op: div(2) },
-      { x: 50, y: 18, span: 16, drift: 0.18, op: mul(2) },
+      { x: 30, y: 64, span: 14, drift: 0.18, op: mul(2) },
+      { x: 70, y: 54, span: 14, drift: -0.18, op: sub(10) },
+      { x: 40, y: 42, span: 14, drift: 0.18, op: null },
+      { x: 60, y: 30, span: 14, drift: -0.18, op: div(2) },
+      { x: 50, y: 20, span: 14, drift: 0.18, op: sub(10) },
     ],
-    goose: { waveSize: 5, waveInterval: 150, maxWaves: 7 },
+    goose: { waveSize: 2, waveInterval: 160, maxWaves: 24 },
   },
   {
     id: 5,
-    keepHp: 500,
+    keepHp: 320,
     narrator: "Final gate. The Big Mama is listening. Make it count.",
     choice: [
-      { label: "×100", op: mul(100) },
-      { label: "÷3", op: div(3) },
+      { label: "×5", op: mul(5) },
+      { label: "−5", op: sub(5) },
     ],
-    firstGate: { x: 50, y: 78, span: 22, drift: 0 },
+    firstGate: { x: 50, y: 78, span: 10, drift: 0.18 },
     upperGates: [
-      { x: 30, y: 66, span: 15, drift: 0.2, op: mul(3) },
-      { x: 70, y: 58, span: 15, drift: -0.2, op: sub(10) },
-      { x: 40, y: 48, span: 15, drift: 0.2, op: sub(10) },
-      { x: 60, y: 38, span: 15, drift: -0.2, op: null },
-      { x: 50, y: 28, span: 15, drift: 0.2, op: mul(2) },
-      { x: 45, y: 16, span: 15, drift: -0.2, op: div(2) },
+      { x: 30, y: 66, span: 14, drift: 0.2, op: sub(10) },
+      { x: 70, y: 58, span: 14, drift: -0.2, op: sub(10) },
+      { x: 40, y: 48, span: 14, drift: 0.2, op: null },
+      { x: 60, y: 38, span: 14, drift: -0.2, op: mul(2) },
+      { x: 50, y: 28, span: 14, drift: 0.2, op: div(2) },
+      { x: 45, y: 19, span: 14, drift: -0.2, op: sub(10) },
     ],
-    goose: { waveSize: 6, waveInterval: 130, maxWaves: 8 },
+    goose: { waveSize: 2, waveInterval: 155, maxWaves: 34 },
   },
 ];
 
