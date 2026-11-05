@@ -16,9 +16,11 @@ export interface LevelConfig {
   /** The two fake-ad gates the player picks between at the opener. */
   choice: { label: string; op: GateOp }[];
   /**
-   * Clear-time star thresholds, in fixed steps: three stars for a clear in ≤ three,
-   * two for ≤ two, one for winning at all. Time is what play buys — a player who
-   * aims the gates and pops the geese clears before a sloppy one.
+   * Star-time thresholds, in fixed steps: three stars for star time ≤ three,
+   * two for ≤ two, one for winning at all. Star time is clear time plus one
+   * fire-rate per goose that reached the kill line, minus one per goose a
+   * player-aimed shot dropped above it (LATE_GOOSE_PENALTY / EARLY_POP_BONUS)
+   * — time adjusted for how the geese were met is what play buys.
    */
   starTimes: { three: number; two: number };
   /** Where the chosen gate lands: the first gate a duckling meets (near the cannon). */
@@ -113,7 +115,7 @@ export const LEVELS: LevelConfig[] = [
       { label: "×4", op: mul(4) },
       { label: "−4", op: sub(4) },
     ],
-    starTimes: { three: 1225, two: 1285 },
+    starTimes: { three: 1225, two: 1345 }, // two: one second past the weak bot's worst 20-seed × clear (1285), so 1★ is for genuinely slow clears
     firstGate: { x: 50, y: 78, span: 11, drift: 0.15 },
     upperGates: [
       { x: 35, y: 58, span: 15, drift: 0.14, op: mul(2) },
