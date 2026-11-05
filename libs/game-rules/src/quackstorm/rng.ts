@@ -11,12 +11,15 @@ export function mulberryStep(state: number): [number, number] {
   return [((t ^ (t >>> 14)) >>> 0) / 4294967296, a];
 }
 
-/** The operation pool a mystery egg can reveal. */
+/**
+ * The operation pool a mystery egg can reveal. No toll: a − player's stream is thin
+ * and the opener's toll already hit it — a surprise −10 on top would set the level
+ * for half the seeds, so mysteries multiply, add or divide and never subtract.
+ */
 export const MYSTERY_POOL: GateOp[] = [
   { kind: "mul", value: 2 },
   { kind: "mul", value: 3 },
   { kind: "add", value: 5 },
-  { kind: "sub", value: 10 },
   { kind: "div", value: 2 },
 ];
 

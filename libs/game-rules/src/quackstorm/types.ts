@@ -42,14 +42,12 @@ export interface Gate {
   op: GateOp | null;
   revealed: boolean;
   /**
-   * Marks the gate the player chose at the opener. When the level sets
-   * `survivorDmg`, a subtractive opener gate releases angry survivors with that
-   * much Keep damage and one goose-pop (and their offspring inherit it), so the
-   * wrong pick costs stars — not the level.
+   * Marks the gate the player chose at the opener. A subtractive opener releases
+   * angry survivors: a plain duckling that outlasts its toll leaves angry, carrying
+   * the toll as its Keep damage plus one goose-pop (its offspring inherit what is
+   * left), so the wrong pick costs stars and seconds — not the level — on every level.
    */
   opener: boolean;
-  /** Level-configured survivor damage for this gate's angry survivors (L5's −5). */
-  survivorDmg?: number;
   /**
    * How many ducklings have crossed this gate since its toll last armed (at level
    * start and every TOLL_REARM_STEPS steps — not on every goose wave, so most
@@ -90,13 +88,15 @@ export interface QuackstormState {
   maxWaves: number;
   waveSize: number;
   waveInterval: number;
+  /** Vertical spacing between geese in one wave (the level's stagger or GOOSE_STAGGER). */
+  waveStagger: number;
   /** Horizontal band [x0, x1] goose x-positions are drawn from. Default is the full river; L1 narrows it to the central lane so a still-aiming new player's fire reaches. */
   gooseX0: number;
   gooseX1: number;
   choice: ChoiceGate[];
   narrator: string;
   stars: number;
-  /** Total bread earned on this level — what the win stars are judged by. */
+  /** Total bread earned on this level, tracked for the win screen. */
   breadEarned: number;
   /** Internal mulberry32 state for goose positions (order of spawning only). */
   rng: number;
@@ -123,15 +123,10 @@ export const FIRE_COOLDOWN = 30;
  * simply wait above the Keep, which is harmless.
  */
 export const GOOSE_STAGGER = 21;
-/**
- * Win-star thresholds as a share of the level's Keep HP: the bread earned per Keep
- * point is roughly constant, so a clean run lands near 1.0 and sloppy aim well below.
- */
-export const STAR_RATIO = { one: 0.35, two: 0.7, three: 1.0 } as const;
 /** Steps between toll re-arms: 15 s at the fixed 60 fps step. At the fire rate
- * (one shot per 0.5 s) an arm holds 30 shots, so a −10 gate eats about a third of
- * steady single-shot fire and passes the rest — it matters all level without
- * walling off lone ducklings the way per-wave re-arming did. */
+ * (one shot per 0.5 s) an arm holds 30 shots, so a −10 gate eats the first ten of
+ * each arm and passes the rest — it matters all level without walling off the level
+ * the way per-wave re-arming did. */
 export const TOLL_REARM_STEPS = 900;
 export const BIG_MAMA_POP = 10;
 export const BIG_MAMA_DAMAGE = 10;

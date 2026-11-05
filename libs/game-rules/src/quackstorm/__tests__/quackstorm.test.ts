@@ -1,6 +1,6 @@
 import {
   applyOp, BIG_MAMA_POP, BIG_MAMA_DAMAGE, COLLIDE, createLevel, chooseGate, DUCK_SPEED, FIRE_COOLDOWN,
-  GOOSE_STAGGER, LEVELS, mysteryOp, opLabel, setAim, setHolding, step, starsFor, WORLD,
+  GOOSE_STAGGER, LEVELS, mysteryOp, MYSTERY_POOL, opLabel, setAim, setHolding, step, starsFor, WORLD,
   type Duckling, type Gate, type Goose, type GateOp, type QuackstormState,
 } from "..";
 
@@ -36,15 +36,35 @@ function play(level: number, pick: 0 | 1, seed = 42): QuackstormState {
   return s;
 }
 
-/** A weak bot: feeds the first gate and only pops a goose once it is at y > 85 (barely in
+/** A weak bot: feeds the first gate and only pops a goose once it is at y > 80 (barely in
  * time) — models a player who mostly watches the gates. Always holding. */
 function playWeak(level: number, pick: 0 | 1, seed = 42): QuackstormState {
   let s = setHolding(chooseGate(createLevel(level, seed), pick), true);
   for (let i = 0; i < 36000 && s.phase === "playing"; i++) {
     const firstGate = s.gates.reduce((a, b) => (b.y > a.y ? b : a));
-    const late = s.geese.filter((g) => g.y > 85);
+    const late = s.geese.filter((g) => g.y > 80);
     const target = late.length > 0 ? late.reduce((a, b) => (b.y > a.y ? b : a)) : firstGate;
     s = step(setAim(s, clampX(target.x)));
+  }
+  return s;
+}
+
+/** A late reacter (round-4 model): only starts aiming at a goose once it passes
+ * y = 60, and drags the aim at 0.5 units/step toward the deepest such goose. It never
+ * feeds the gates on purpose — it is the slowest player a level must still be clearable
+ * by. Pins finding 2: no difficulty cliff (no 20→0 jump) between adjacent levels. */
+function playLateReactor(level: number, pick: 0 | 1, seed = 42): QuackstormState {
+  let s = setHolding(chooseGate(createLevel(level, seed), pick), true);
+  for (let i = 0; i < 36000 && s.phase === "playing"; i++) {
+    const ready = s.geese.filter((g) => g.y > 60);
+    if (ready.length > 0) {
+      const target = ready.reduce((a, b) => (b.y > a.y ? b : a));
+      const want = clampX(target.x);
+      const d = want - s.cannonX;
+      s = step(setAim(s, clampX(s.cannonX + Math.max(-0.5, Math.min(0.5, d)))));
+    } else {
+      s = step(s);
+    }
   }
   return s;
 }
@@ -192,7 +212,7 @@ describe("gate tolls across steps", () => {
     expect(out.keepHp).toBe(998); // only the 11th and the pre-rearm duck reached the Keep
   });
 
-  test("most of a full wave of single shots at the fire rate passes the −10 gate", () => {
+  test("a full wave of single shots at the fire rate passes the −10 gate (re-arm elapsed)", () => {
     // The toll is paid by eleven early crossings. A full L1 wave (waveInterval steps
     // = eight shots at the fire rate) then straddles the level's first goose wave:
     // the wave no longer re-arms, so every shot in the wave passes.
@@ -281,6 +301,17 @@ describe("Big Mama", () => {
     expect(out.ducklings[0].popsLeft).toBe(0);
   });
 
+  test("a spent Big Mama (popsLeft 0) has no pops left: it trades one for one and sinks", () => {
+    const s = playing({
+      keepHp: 100,
+      ducks: [duck(1, 50, 50.5, { big: true, popsLeft: 0 })],
+      geese: [{ id: 2, x: 50, y: 50.5 }],
+    });
+    const out = step(s);
+    expect(out.geese).toHaveLength(0);
+    expect(out.ducklings).toHaveLength(0);
+  });
+
   test("a Big Mama that reaches the Keep deals ten", () => {
     const s = playing({ keepHp: 20, ducks: [duck(1, 50, 6.2, { big: true, popsLeft: BIG_MAMA_POP })] });
     const out = step(s);
@@ -333,6 +364,12 @@ describe("mystery eggs", () => {
     const t = step(playing({ ducks: [duck(1, 50, 50.5)], gates: [gate(99, 50, null)] }));
     expect(s.gates[0].op).toEqual(mysteryOp(7, 4));
     expect(t.gates[0].op).toEqual(mysteryOp(7, 99));
+  });
+
+  test("a mystery egg never reveals a toll: the pool has no subtract", () => {
+    // A − player's stream is already thin after the opener's toll — a surprise −10
+    // on top would set the level for half the seeds. Mysteries multiply, add or divide.
+    expect(MYSTERY_POOL.every((op) => op.kind !== "sub")).toBe(true);
   });
 });
 
@@ -395,6 +432,48 @@ describe("level difficulty", () => {
       expect(s.phase, `L${l.id}`).toBe("won");
     }
   });
+
+  test("the late-reacter bot clears every level: no difficulty cliff between adjacent levels (20 seeds)", () => {
+    // Round-6 finding 2: the late-reacter win rate must not jump 20→0 between
+    // adjacent levels. It is the slowest player a level must still be clearable by
+    // (only aims at a goose past y=60, drags at 0.5 u/step, never aims the gates),
+    // so each level gets a floor of 15/20 — a cliff would drop a level to 0.
+    // Pinned on the − opener: its thinner, angrier stream makes the level longer
+    // (more geese to pop), so it is the harder of the two openers.
+    const SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
+    for (const l of LEVELS) {
+      const wins = SEEDS.filter((seed) => playLateReactor(l.id, 1, seed).phase === "won").length;
+      expect(wins, `L${l.id} late-reacter wins ${wins}/20`).toBeGreaterThanOrEqual(15);
+    }
+  });
+
+  test("the subtractive opener clears in at most 1.5x the multiplicative one on L1-L5 (perfect and weak, 20 seeds)", () => {
+    // Round-6 finding 1: the wrong (−) opener must not be a grind. On every level the
+    // − opener's average clear time over 20 seeds is at most 1.5x the × opener's, for
+    // both the perfect bot and the weak bot. The angry survivors carrying the toll
+    // (dmg = the opener's value, released on every level) keep the − stream
+    // competitive, so no level special-cases it.
+    const SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
+    const avgRatio = (bot: (level: number, pick: 0 | 1, seed?: number) => QuackstormState) =>
+      LEVELS.map((l) => {
+        let good = 0;
+        let bad = 0;
+        for (const seed of SEEDS) {
+          const g = bot(l.id, 0, seed);
+          const b = bot(l.id, 1, seed);
+          expect(g.phase, `L${l.id} seed ${seed} ×`).toBe("won");
+          expect(b.phase, `L${l.id} seed ${seed} −`).toBe("won");
+          good += g.stepCount;
+          bad += b.stepCount;
+        }
+        return { id: l.id, ratio: bad / good };
+      });
+    for (const bot of [play, playWeak]) {
+      for (const { id, ratio } of avgRatio(bot)) {
+        expect(ratio, `L${id} −/× ${ratio.toFixed(2)}`).toBeLessThanOrEqual(1.5);
+      }
+    }
+  });
 });
 
 describe("full levels", () => {
@@ -416,8 +495,8 @@ describe("full levels", () => {
   test("level 5: the subtractive opener no longer stalls the level (20 seeds)", () => {
     // The −5 toll used to starve the whole 30-shot arm through the toll stack, and
     // 7 of 20 seeds ran to the 600 s cap with a live cannon. Now the opener releases
-    // angry survivors (the level's survivorDmg), so the wrong pick costs stars:
-    // every seed still wins, every one of them slower than the × opener, and none
+    // angry survivors carrying the toll (dmg = the opener's − value), so the wrong
+    // pick costs stars: every seed still wins, every one slower than the × opener, and none
     // drifts far from it.
     for (let seed = 1; seed <= 20; seed++) {
       const good = play(5, 0, seed);
@@ -486,6 +565,25 @@ describe("opener survivors", () => {
     }
   });
 
+  test("a spent angry survivor passes no fresh pop to its offspring: they carry the remaining pops", () => {
+    // Round-6 smaller fix: a survivor that already spent its goose-pop (popsLeft 0) must
+    // not get a fresh one at the next gate. The ×2 gate doubles the crossing; the
+    // offspring inherit the survivor's remaining pops (0), not a new one.
+    const { s } = subOpen();
+    let st = {
+      ...s,
+      // The survivor already spent its goose-pop; only its anger (dmg 5) remains.
+      ducklings: [duck(1, 50, 48.4, { dmg: 5, popsLeft: 0 })],
+      gates: [{ ...gate(3, 48, { kind: "mul", value: 2 }), opener: false }],
+    };
+    st = step(st);
+    expect(st.ducklings).toHaveLength(2);
+    for (const d of st.ducklings) {
+      expect(d.dmg).toBe(5);
+      expect(d.popsLeft).toBe(0);
+    }
+  });
+
   test("the multiplicative opener releases plain ducklings", () => {
     const s = chooseGate(createLevel(5, 42), 0);
     const opener = s.gates.find((g) => g.opener)!;
@@ -496,14 +594,16 @@ describe("opener survivors", () => {
     expect(st.ducklings.every((d) => d.dmg === 1 && d.popsLeft === 0)).toBe(true);
   });
 
-  test("levels without survivorDmg keep plain subtractive openers", () => {
-    for (const id of [1, 2, 3, 4]) {
+  test("every level's subtractive opener releases angry survivors carrying the toll", () => {
+    for (const id of [1, 2, 3, 4, 5]) {
       const s = chooseGate(createLevel(id, 42), 1);
       const opener = s.gates.find((g) => g.opener)!;
       const xs = [47, 48.5, 50, 51.5, 53, 54.5];
       let st = { ...s, ducklings: xs.map((x, i) => duck(i + 1, x, opener.y + 0.4)), gates: [opener] };
       st = step(st);
-      expect(st.ducklings.every((d) => d.dmg === 1 && d.popsLeft === 0), `L${id}`).toBe(true);
+      const toll = opener.op!.value;
+      expect(st.ducklings.length, `L${id}`).toBe(xs.length - toll);
+      expect(st.ducklings.every((d) => d.dmg === toll && d.popsLeft === 1), `L${id}`).toBe(true);
     }
   });
 });
@@ -517,12 +617,12 @@ describe("goose waves", () => {
     return st;
   };
 
-  test("geese in a wave are staggered by GOOSE_STAGGER, not marching in step", () => {
+  test("geese in a wave are staggered by the level's wave stagger, not marching in step", () => {
     const s = spawnGeese(chooseGate(createLevel(5, 42), 0));
     const ys = s.geese.map((g) => g.y).sort((a, b) => a - b);
     expect(ys.length).toBeGreaterThanOrEqual(2);
-    // The wave's members keep exactly GOOSE_STAGGER between them (same speed).
-    expect(ys[0] - ys[1]).toBeCloseTo(-GOOSE_STAGGER, 5);
+    // L-5 uses a custom 42 stagger (the default is GOOSE_STAGGER = 21).
+    expect(ys[0] - ys[1]).toBeCloseTo(-(LEVELS[4].goose.stagger ?? GOOSE_STAGGER), 5);
   });
 
   test("level 1's geese march the central lane a stationary aim can reach", () => {
@@ -583,11 +683,15 @@ describe("opener and controls", () => {
     expect(out.ducklings.length).toBe(2);
   });
 
-  test("stars scale with bread earned against the level's Keep HP", () => {
-    expect(starsFor(0, 100)).toBe(0);
-    expect(starsFor(12, 100)).toBe(0);
-    expect(starsFor(50, 100)).toBe(1);
-    expect(starsFor(80, 100)).toBe(2);
-    expect(starsFor(120, 100)).toBe(3);
+  test("stars are time-based: a faster clear earns more stars", () => {
+    // Time-based (not bread-based): per-level star times, and a win is always at
+    // least one star. Boundaries are inclusive.
+    const t = { three: 1000, two: 1600 };
+    expect(starsFor(0, t)).toBe(3);
+    expect(starsFor(1000, t)).toBe(3); // exactly at the 3-star line
+    expect(starsFor(1001, t)).toBe(2); // one step past it
+    expect(starsFor(1600, t)).toBe(2); // exactly at the 2-star line
+    expect(starsFor(1601, t)).toBe(1); // a slow win is still a win
+    expect(starsFor(99999, t)).toBe(1);
   });
 });

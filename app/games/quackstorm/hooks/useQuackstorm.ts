@@ -113,7 +113,13 @@ export function useQuackstorm(initialLevel = 1): QuackstormControls {
   const choose = useCallback(
     (index: 0 | 1) => {
       const st = stateRef.current;
-      if (st && st.phase === "choice") stateRef.current = chooseGate(st, index);
+      if (st && st.phase === "choice") {
+        stateRef.current = chooseGate(st, index);
+        // The engine has already switched to "playing": reflect it in the same
+        // commit as the click, not on the next animation frame, so the choice
+        // overlay unmounts before it can swallow a press meant for the canvas.
+        setPhase("playing");
+      }
     },
     [],
   );

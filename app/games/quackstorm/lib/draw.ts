@@ -65,14 +65,23 @@ function drawGates(ctx: CanvasRenderingContext2D, c: ReturnType<typeof makeCtx>,
 
 function drawDucklings(ctx: CanvasRenderingContext2D, c: ReturnType<typeof makeCtx>, state: QuackstormState) {
   for (const d of state.ducklings) {
+    const angry = !d.big && d.dmg > 1;
     const r = d.big ? 6 : 2.2;
-    ctx.fillStyle = d.big ? "#fbbf24" : "#fde047";
+    ctx.fillStyle = d.big ? "#fbbf24" : angry ? "#f87171" : "#fde047";
     ellipse(ctx, c, d.x, d.y, r, r);
     if (d.big) {
       ctx.fillStyle = "#b45309";
       ctx.font = `bold ${Math.round(c.H * 0.04)}px system-ui, sans-serif`;
       ctx.textAlign = "center";
       ctx.fillText("🦆", c.sx(d.x), c.sy(d.y - 8));
+    } else if (angry) {
+      // The red duckling is an angry survivor of the subtractive opener: it will
+      // hurt the Keep and it will cost a goose to stop it. The cue is what the
+      // engine's dmg/popsLeft say, drawn for the player.
+      ctx.font = `${Math.round(c.H * 0.028)}px system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("💢", c.sx(d.x), c.sy(d.y - 5));
     }
   }
 }

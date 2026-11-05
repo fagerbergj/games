@@ -1,5 +1,5 @@
 import {
-  BIG_MAMA_DAMAGE, BIG_MAMA_POP, COLLIDE, CROSS_EPS, DUCK_SPEED, FIRE_COOLDOWN, GOOSE_SPEED, GOOSE_STAGGER, MAX_BREAD, STAR_RATIO, TOLL_REARM_STEPS, WORLD,
+  BIG_MAMA_DAMAGE, BIG_MAMA_POP, COLLIDE, CROSS_EPS, DUCK_SPEED, FIRE_COOLDOWN, GOOSE_SPEED, GOOSE_STAGGER, MAX_BREAD, TOLL_REARM_STEPS, WORLD,
   type Duckling, type Gate, type GateOp, type Goose, type QuackstormState,
 } from "./types";
 import { LEVELS, levelConfig } from "./levels";
@@ -30,18 +30,16 @@ export function opLabel(op: GateOp | null): string {
   }
 }
 
-/**
- * Stars on the win end-card, 0-3. Judged by total bread earned against the level's
- * Keep HP — stable and player-controlled (aim quality plus the opener pick). The
- * meter left is not: a Big Mama empties it, so it only measures time since the last
- * Big Mama.
+/** Clear-time star thresholds, in fixed steps: three stars for a fast clear, two
+ * for a safe one, one for surviving at all. Judged by time because time is what
+ * play quality buys in this game: a player who aims the gates and pops the geese
+ * clears before a sloppy one, whatever either earns at the gates. (Bread earned
+ * cannot rank players — two players feeding the same gates earn the same bread.)
  */
-export function starsFor(breadEarned: number, keepMaxHp: number): number {
-  const ratio = keepMaxHp > 0 ? breadEarned / keepMaxHp : 0;
-  if (ratio >= STAR_RATIO.three) return 3;
-  if (ratio >= STAR_RATIO.two) return 2;
-  if (ratio >= STAR_RATIO.one) return 1;
-  return 0;
+export function starsFor(steps: number, starTimes: { three: number; two: number }): number {
+  if (steps <= starTimes.three) return 3;
+  if (steps <= starTimes.two) return 2;
+  return 1;
 }
 
 /** A fresh level in the fake-ad opener phase, ready to pick a first gate. */
@@ -79,6 +77,7 @@ export function createLevel(levelId: number, seed: number = 1234): QuackstormSta
     maxWaves: cfg.goose.maxWaves,
     waveSize: cfg.goose.waveSize,
     waveInterval: cfg.goose.waveInterval,
+    waveStagger: cfg.goose.stagger ?? GOOSE_STAGGER,
     gooseX0: cfg.goose.x0 ?? 8,
     gooseX1: cfg.goose.x1 ?? 92,
     choice: cfg.choice.map((c) => ({ label: c.label, op: { ...c.op } })),
@@ -102,7 +101,6 @@ export function chooseGate(state: QuackstormState, index: 0 | 1): QuackstormStat
     revealed: true,
     flock: 0,
     opener: true,
-    survivorDmg: cfg.survivorDmg,
   };
   return { ...state, gates: [...state.gates, gate], nextId: state.nextId + 1, phase: "playing" };
 }
@@ -134,8 +132,9 @@ function launch(st: QuackstormState, big: boolean): void {
 /**
  * Fan `count` ducklings out across the gate's zone, just above its line. A lone
  * pass-through (one in, one out) keeps the duckling's own x, so it paddles straight on.
- * `boost` marks the angry survivors a subtractive opener releases: they keep paddling
- * with extra Keep damage and one goose-pop instead of sinking on contact.
+ * `boost` marks anger: the angry survivors the opener's subtractive toll releases,
+ * or the remaining anger (Keep damage plus the crossing flock's leftover goose-pops)
+ * that an angry flock's offspring inherit.
  */
 function fan(
   gate: Gate,
@@ -194,12 +193,20 @@ function applyGates(st: QuackstormState): void {
     const crossed = new Set(crossing.map((d) => d.id));
     st.ducklings = st.ducklings.filter((d) => !crossed.has(d.id));
     // The opener's angry survivors, and their offspring: the sadness is contagious.
-    const boost =
-      gate.opener && gate.op.kind === "sub" && gate.survivorDmg !== undefined
-        ? { dmg: gate.survivorDmg, popsLeft: 1 }
-        : crossing.length > 0 && crossing.every((d) => d.dmg > 1)
-          ? { dmg: crossing[0].dmg, popsLeft: 1 }
-          : undefined;
+    // A plain duckling that survives the opener's subtractive toll leaves angry —
+    // it carries the toll as its Keep damage and one goose-pop, so the wrong pick
+    // costs stars and seconds, not the level, on any level. The pop matters: a
+    // − player's thin stream must still defend the Keep against the wave flood,
+    // where a × player's Big Mammas do it. An angry duckling that crosses another
+    // gate passes its anger on as-is: the offspring keep the crossing flock's
+    // remaining pops, never a fresh one.
+    const allAngry = crossing.length > 0 && crossing.every((d) => d.dmg > 1);
+    const allPlain = crossing.length > 0 && crossing.every((d) => d.dmg === 1);
+    const boost = allAngry
+      ? { dmg: crossing[0].dmg, popsLeft: Math.min(...crossing.map((d) => d.popsLeft)) }
+      : gate.opener && gate.op.kind === "sub" && allPlain
+        ? { dmg: gate.op.value, popsLeft: 1 }
+        : undefined;
     st.ducklings = st.ducklings.concat(fan(gate, out, crossing, () => st.nextId++, boost));
   }
 }
@@ -256,9 +263,10 @@ function spawnWave(st: QuackstormState): void {
     st.geese.push({
       id: st.nextId++,
       x: st.gooseX0 + r * (st.gooseX1 - st.gooseX0),
-      // Staggered: each goose in the wave waits GOOSE_STAGGER above the last, so a
-      // one-shot player can pop every member of the wave as it crosses their aim.
-      y: WORLD.keepY + 6 - i * GOOSE_STAGGER,
+      // Staggered: each goose in the wave waits the level's stagger (default
+      // GOOSE_STAGGER) above the last, so a one-shot player can pop every member
+      // of the wave as it crosses their aim.
+      y: WORLD.keepY + 6 - i * st.waveStagger,
     });
   }
   st.waveNumber++;
@@ -302,7 +310,7 @@ export function step(state: QuackstormState): QuackstormState {
   if (st.keepHp <= 0) {
     st.keepHp = 0;
     st.phase = "won";
-    st.stars = starsFor(st.breadEarned, st.keepMaxHp);
+    st.stars = starsFor(st.stepCount, (levelConfig(st.level) ?? LEVELS[0]).starTimes);
   } else if (st.geese.some((g) => g.y >= WORLD.cannonY)) {
     st.phase = "lost";
   }
