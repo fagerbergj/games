@@ -1,5 +1,5 @@
 import {
-  BIG_MAMA_DAMAGE, BIG_MAMA_POP, COLLIDE, CROSS_EPS, DUCK_SPEED, FIRE_COOLDOWN, GOOSE_SPEED, MAX_BREAD, STAR_RATIO, WORLD,
+  BIG_MAMA_DAMAGE, BIG_MAMA_POP, COLLIDE, CROSS_EPS, DUCK_SPEED, FIRE_COOLDOWN, GOOSE_SPEED, MAX_BREAD, STAR_RATIO, TOLL_REARM_STEPS, WORLD,
   type Duckling, type Gate, type GateOp, type Goose, type QuackstormState,
 } from "./types";
 import { LEVELS, levelConfig } from "./levels";
@@ -73,7 +73,7 @@ export function createLevel(levelId: number, seed: number = 1234): QuackstormSta
     geese: [],
     gates,
     nextId: gates.length + 1,
-    nextWaveAt: cfg.goose.waveInterval,
+    nextWaveAt: cfg.goose.firstWaveAt ?? cfg.goose.waveInterval,
     waveNumber: 0,
     maxWaves: cfg.goose.maxWaves,
     waveSize: cfg.goose.waveSize,
@@ -144,8 +144,9 @@ function fan(gate: Gate, count: number, crossing: Duckling[], nextId: () => numb
  * (`flock`) of everything that has passed through since its toll last armed, and the
  * operation is taken as a toll from that count: a −10 gate eats the first ten ducklings,
  * then passes the rest one for one, instead of wiping out every duckling that crosses
- * alone. A new goose wave re-arms every toll (see `spawnWave`). A × gate also adds its
- * net gain to the bread meter and the level's `breadEarned`.
+ * alone. Tolls re-arm on a fixed timer (TOLL_REARM_STEPS, see `step`) — deliberately
+ * not on every goose wave, which would eat every lone shot again. A × gate also adds
+ * its net gain to the bread meter and the level's `breadEarned`.
  * Mutates `st.ducklings`, `st.bread` and `st.breadEarned`.
  */
 function applyGates(st: QuackstormState): void {
@@ -225,9 +226,6 @@ function spawnWave(st: QuackstormState): void {
     st.rng = ns;
     st.geese.push({ id: st.nextId++, x: 8 + r * (WORLD.width - 16), y: WORLD.keepY + 6 });
   }
-  // A new wave re-arms every toll: a −10 gate keeps eating ten on every wave, so toll
-  // gates matter all level instead of drying up after their first ten crossings.
-  for (const gate of st.gates) gate.flock = 0;
   st.waveNumber++;
   st.nextWaveAt += st.waveInterval;
 }
@@ -274,6 +272,12 @@ export function step(state: QuackstormState): QuackstormState {
     st.phase = "lost";
   }
   st.stepCount++;
+  // Toll re-arm on a fixed timer, not per goose wave: long enough that most single
+  // shots at the fire rate pass through, frequent enough that a −10 still matters
+  // all level. (Tolls start armed at level start, flock 0.)
+  if (st.stepCount % TOLL_REARM_STEPS === 0) {
+    for (const gate of st.gates) gate.flock = 0;
+  }
   return st;
 }
 

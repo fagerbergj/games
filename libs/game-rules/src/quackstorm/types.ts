@@ -41,10 +41,11 @@ export interface Gate {
   revealed: boolean;
   /**
    * How many ducklings have crossed this gate since its toll last armed (at level
-   * start and after every goose wave). The operation is taken as a toll from this
-   * running flock, so a −10 gate eats the first ten ducklings (even lone ones) and
-   * passes the rest one for one — on every wave. For a +N egg the N lands on the
-   * first crossing of each arm; later crossings pass one for one.
+   * start and every TOLL_REARM_STEPS steps — not on every goose wave, so most
+   * single shots at the fire rate pass through). The operation is taken as a toll
+   * from this running flock, so a −10 gate eats the first ten ducklings (even lone
+   * ones) of each arm and passes the rest one for one. For a +N egg the N lands on
+   * the first crossing of each arm; later crossings pass one for one.
    */
   flock: number;
 }
@@ -104,6 +105,11 @@ export const FIRE_COOLDOWN = 30;
  * point is roughly constant, so a clean run lands near 1.0 and sloppy aim well below.
  */
 export const STAR_RATIO = { one: 0.35, two: 0.7, three: 1.0 } as const;
+/** Steps between toll re-arms: 15 s at the fixed 60 fps step. At the fire rate
+ * (one shot per 0.5 s) an arm holds 30 shots, so a −10 gate eats about a third of
+ * steady single-shot fire and passes the rest — it matters all level without
+ * walling off lone ducklings the way per-wave re-arming did. */
+export const TOLL_REARM_STEPS = 900;
 export const BIG_MAMA_POP = 10;
 export const BIG_MAMA_DAMAGE = 10;
 export const MAX_BREAD = 100;

@@ -1,5 +1,5 @@
 import {
-  applyOp, BIG_MAMA_POP, BIG_MAMA_DAMAGE, createLevel, chooseGate, DUCK_SPEED, LEVELS, mysteryOp,
+  applyOp, BIG_MAMA_POP, BIG_MAMA_DAMAGE, createLevel, chooseGate, DUCK_SPEED, FIRE_COOLDOWN, LEVELS, mysteryOp,
   opLabel, setAim, setHolding, step, starsFor, WORLD,
   type Duckling, type Gate, type Goose, type GateOp, type QuackstormState,
 } from "..";
@@ -115,7 +115,7 @@ describe("gate tolls across steps", () => {
 
   test("a +5 egg's five land on the first crossing, later crossings pass one for one", () => {
     // Seven ducks in single file: the first becomes six, each of the other six
-    // passes straight through — the +N is a one-time boost, paid out of the toll.
+    // passes straight through — the +N is a one-time-per-arm boost, paid out of the toll.
     const ducks = Array.from({ length: 7 }, (_, i) => duck(1040 + i, 50, 50.5 + i * 2));
     let out = playing({ ducks, gates: [gate(9, 50, { kind: "add", value: 5 })] });
     for (let i = 0; i < 200 && out.ducklings.some((d) => d.y > 50); i++) out = step(out);
@@ -132,6 +132,57 @@ describe("gate tolls across steps", () => {
     // A 21st duck, alone, now passes straight through the paid-off gate.
     out = step({ ...out, ducklings: [duck(99, 50, 50.5)] });
     expect(out.ducklings).toHaveLength(1);
+  });
+
+  test("a goose wave does not re-arm the toll: a lone shot after the wave still passes", () => {
+    // Eleven cross the toll early; the level's first goose wave spawns at step 600
+    // (L1's firstWaveAt). A lone shot after the wave must pass — the toll was paid
+    // and the wave left it paid. (Per-wave re-arming would have eaten it.)
+    const eleven = Array.from({ length: 11 }, (_, i) => duck(1000 + i, 50, 50.5 + i * 2));
+    let out = playing({ ducks: eleven, gates: [gate(9, 50, { kind: "sub", value: 10 })] });
+    for (let i = 0; i < 758 && out.phase === "playing"; i++) out = step(out);
+    expect(out.waveNumber).toBe(1);
+    out = step({ ...out, ducklings: [duck(99, 50, 94)] });
+    for (let i = 0; i < 70; i++) out = step(out);
+    expect(out.ducklings).toHaveLength(1);
+  });
+
+  test("the toll re-arms on the fixed timer: a paid gate eats the first shot of a new arm", () => {
+    // Eleven cross (toll paid, flock 11). The lone duck crossing just before the
+    // TOLL_REARM_STEPS re-arm still passes; the next one, after it, is eaten.
+    const eleven = Array.from({ length: 11 }, (_, i) => duck(1000 + i, 50, 50.5 + i * 2));
+    let out = playing({ ducks: eleven, gates: [gate(9, 50, { kind: "sub", value: 10 })] });
+    out = { ...out, nextWaveAt: 100000 }; // no goose waves: isolate the timer
+    for (let i = 0; i < 838; i++) out = step(out);
+    expect(out.gates[0].flock).toBe(11);
+    out = step({ ...out, ducklings: [...out.ducklings, duck(2000, 50, 94)] }); // crosses at 897
+    for (let i = 0; i < 63; i++) out = step(out); // now at step 902: the re-arm happened at 900
+    expect(out.ducklings).toHaveLength(1); // it crossed into the paid flock and passed
+    expect(out.gates[0].flock).toBe(0); // the fixed timer re-armed at step 900
+    out = step({ ...out, ducklings: [...out.ducklings, duck(2001, 50, 94)] }); // crosses at 961
+    for (let i = 0; i < 68; i++) out = step(out);
+    expect(out.ducklings).toHaveLength(0); // the fresh arm eats it
+    expect(out.gates[0].flock).toBe(1);
+    expect(out.keepHp).toBe(998); // only the 11th and the pre-rearm duck reached the Keep
+  });
+
+  test("most of a full wave of single shots at the fire rate passes the −10 gate", () => {
+    // The toll is paid by eleven early crossings. A full L1 wave (waveInterval steps
+    // = eight shots at the fire rate) then straddles the level's first goose wave:
+    // the wave no longer re-arms, so every shot in the wave passes.
+    const eleven = Array.from({ length: 11 }, (_, i) => duck(1000 + i, 50, 50.5 + i * 2));
+    let out = setAim(playing({ ducks: eleven, gates: [gate(9, 50, { kind: "sub", value: 10 })] }), 50);
+    const waveInterval = out.waveInterval; // L1: 240; the first wave is at 600, inside 480-720.
+    for (let i = 0; i < 480 && out.phase === "playing"; i++) out = step(out);
+    const base = out.keepHp;
+    for (let i = 480; i < 480 + waveInterval && out.phase === "playing"; i++) {
+      out = i % FIRE_COOLDOWN === 0
+        ? step({ ...out, ducklings: [...out.ducklings, duck(3000 + i, 50, 94)] })
+        : step(out);
+    }
+    for (let i = 480 + waveInterval; i < 830 && out.phase === "playing"; i++) out = step(out);
+    // Eight shots fired (waveInterval / FIRE_COOLDOWN); all eight reached the Keep.
+    expect(base - out.keepHp).toBe(8);
   });
 });
 
@@ -272,6 +323,10 @@ describe("level difficulty", () => {
     }
     // L1's first wave is the latest of all levels: a new player gets to watch the
     // gates work before a goose decides for them.
+    const firstWaveAt = (l: (typeof LEVELS)[number]) => l.goose.firstWaveAt ?? l.goose.waveInterval;
+    expect(firstWaveAt(LEVELS[0])).toBeGreaterThan(
+      Math.max(...LEVELS.slice(1).map(firstWaveAt)),
+    );
     expect(LEVELS[0].goose.waveInterval).toBeGreaterThan(
       Math.max(...LEVELS.slice(1).map((l) => l.goose.waveInterval)),
     );
@@ -310,9 +365,19 @@ describe("full levels", () => {
     },
   );
 
-  test("level 5: the subtractive opener loses the round", () => {
+  test("level 5: the subtractive opener loses the round (seed 42)", () => {
     expect(play(5, 0).phase).toBe("won");
     expect(play(5, 1).phase).toBe("lost");
+  });
+
+  test("level 5: the subtractive opener is winnable at perfect aim, not a dead end", () => {
+    // The wrong opener must cost something, but a perfect player must still be able
+    // to win: at least half of twenty perfect-aim runs clear the level.
+    let wins = 0;
+    for (let seed = 1; seed <= 20; seed++) {
+      if (play(5, 1, seed).phase === "won") wins++;
+    }
+    expect(wins).toBeGreaterThanOrEqual(10);
   });
 });
 

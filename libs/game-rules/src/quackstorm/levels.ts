@@ -19,7 +19,16 @@ export interface LevelConfig {
   firstGate: Omit<GateSpec, "op">;
   /** The rest of the river, above the first gate. */
   upperGates: GateSpec[];
-  goose: { waveSize: number; waveInterval: number; maxWaves: number };
+  goose: {
+    waveSize: number;
+    waveInterval: number;
+    maxWaves: number;
+    /**
+     * Step at which the first wave spawns. Defaults to `waveInterval`; a longer
+     * value lets a new player watch the gates work before a goose decides for them.
+     */
+    firstWaveAt?: number;
+  };
 }
 
 const mul = (value: number): GateOp => ({ kind: "mul", value });
@@ -28,13 +37,14 @@ const div = (value: number): GateOp => ({ kind: "div", value });
 
 /**
  * Tuning notes: the opener gates are small on purpose (×3–×5 against −2–−5) so the
- * choice costs something, and at higher levels the wrong pick gets punishing — on L5 it
- * loses the round outright, but on L1–L4 the upper gates, the geese and the Big Mama
- * still decide it. The first gate is narrow and drifts like the rest, so the player
- * has to aim it. Toll gates re-arm on every goose wave (see spawnWave), so a −10
- * keeps mattering all level. L1's first wave is late on purpose: a new player should
- * get to watch the gates work before a goose decides for them. Difficulty rises
- * L1→L5 in Keep HP, goose arrival rate, total geese and — measured by the perfect-aim
+ * choice costs something, and at higher levels the wrong pick gets punishing — on L5
+ * it roughly halves even a perfect player's win rate, but on L1–L4 the upper gates,
+ * the geese and the Big Mama still decide it. The first gate is narrow and drifts like
+ * the rest, so the player has to aim it. Toll gates re-arm on a fixed timer
+ * (TOLL_REARM_STEPS, see step), so a −10 keeps mattering all level without walling off
+ * single shots. L1's first wave is late on purpose (firstWaveAt: 600 — ten seconds in):
+ * a new player should get to watch the gates work before a goose decides for them.
+ * Difficulty rises L1→L5 in Keep HP, total geese and — measured by the perfect-aim
  * and weak bots in the difficulty tests — time to clear and loss rate; see the tests.
  */
 export const LEVELS: LevelConfig[] = [
@@ -51,7 +61,7 @@ export const LEVELS: LevelConfig[] = [
       { x: 40, y: 55, span: 16, drift: 0.12, op: null },
       { x: 60, y: 32, span: 16, drift: -0.12, op: mul(2) },
     ],
-    goose: { waveSize: 1, waveInterval: 240, maxWaves: 14 },
+    goose: { waveSize: 1, waveInterval: 240, maxWaves: 14, firstWaveAt: 600 },
   },
   {
     id: 2,
@@ -121,7 +131,7 @@ export const LEVELS: LevelConfig[] = [
       { x: 50, y: 28, span: 14, drift: 0.2, op: div(2) },
       { x: 45, y: 24, span: 14, drift: -0.2, op: sub(10) },
     ],
-    goose: { waveSize: 3, waveInterval: 150, maxWaves: 34 },
+    goose: { waveSize: 3, waveInterval: 170, maxWaves: 34 },
   },
 ];
 
