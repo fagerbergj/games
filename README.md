@@ -100,9 +100,9 @@ libs/
     └── quackstorm/         # Pure, seeded, fixed-step engine (no React/DOM), imported as @game-rules/quackstorm
 ```
 
-Game rules that a server must also run live in `libs/game-rules` as framework-free
-TypeScript. State is plain JSON, and every transition that shuffles takes an injected
-`rng`, so a seeded run replays exactly. Lint blocks React, Next and browser globals there.
+Game rules that a server must also run live in `libs/game-rules` as framework-free TypeScript.
+State is plain JSON, and every transition that shuffles takes an injected `rng`, so a seeded run replays exactly.
+Lint blocks React, Next and browser globals there.
 
 ## Technologies
 
@@ -122,9 +122,8 @@ docker run -p 3000:3000 games-server
 
 ## Multiplayer server
 
-`apps/game-server` is a WebSocket server that owns multiplayer game state; the page at
-`/games/blackjack/multiplayer` talks to it. Rooms live in memory, keyed by a 6-character
-code, and a room nobody is connected to is dropped after 10 minutes.
+`apps/game-server` is a WebSocket server that owns multiplayer game state; the page at `/games/blackjack/multiplayer` talks to it.
+Rooms live in memory, keyed by a 6-character code, and a room nobody is connected to is dropped after 10 minutes.
 
 Run it next to `npm run dev`:
 
@@ -133,11 +132,9 @@ npm run game-server                                        # builds, then listen
 NEXT_PUBLIC_GAME_SERVER_URL=ws://localhost:3001 npm run dev
 ```
 
-Without `NEXT_PUBLIC_GAME_SERVER_URL` (it is read at build time) the page connects to
-`/ws` on its own origin, so production needs the proxy to send `/ws` to the server.
-`publish.yml` pushes the image as `ghcr.io/fagerbergj/game-server`. Compose, with Traefik
-routing `/ws` on the games host to it (no prefix strip; the server accepts any path, and
-Traefik passes WebSocket upgrades through by default):
+Without `NEXT_PUBLIC_GAME_SERVER_URL` (it is read at build time) the page connects to `/ws` on its own origin, so production needs the proxy to send `/ws` to the server.
+`publish.yml` pushes the image as `ghcr.io/fagerbergj/game-server`.
+Compose routes `/ws` on the games host to it with Traefik (no prefix strip; the server accepts any path, and Traefik passes WebSocket upgrades through by default):
 
 ```yaml
 services:
@@ -160,18 +157,19 @@ JSON text frames; types live in `libs/game-rules/src/blackjack/protocol.ts`.
 | Client sends | Effect |
 | --- | --- |
 | `create {name}` | New room; the creator is host |
-| `join {code, name, token?}` | Join a room; a `token` from an earlier `joined` re-claims that player's seat and host role |
-| `sit {seat}` | Take seat 0-4 (moving is allowed between rounds; sitting mid-round waits for the next one) |
+| `join {code, name, token?}` | Join a room |
+| `sit {seat}` | Take seat 0-4 |
 | `bet {amount}` | Wager on your seat; the deal goes out once every seated player has bet |
 | `start` | Host deals now; seats without a bet sit the round out |
-| `action {action}` | `hit` `stand` `double` `split` `surrender` on your turn, `insurance` `declineInsurance` `evenMoney` in the insurance phase, `buyBackIn` when broke |
+| `action {action}` | Your turn's and the insurance phase's actions, plus `buyBackIn` when broke |
 | `newRound` | Host clears a finished round |
 | `leave` | Give up your seat and leave |
 
-The server replies `joined {code, token}` once, `state {room}` after every change (filtered per
-player: no shoe, the dealer's face-down card replaced by a placeholder), and `error {message}`
-for anything it refuses. If the host disconnects, any player may `start`/`newRound`; a player
-disconnected for 30 seconds, or gone, has their insurance declined and hands stood for them.
+The `action` values are `hit`, `stand`, `double`, `split` and `surrender` on your turn, `insurance`, `declineInsurance` and `evenMoney` in the insurance phase; `buyBackIn` is valid when broke.
+You may move between rounds; sitting mid-round waits for the next one. Joining with a `token` from an earlier `joined` re-claims that seat and host role.
+
+The server replies `joined {code, token}` once, `state {room}` after every change (filtered per player: no shoe, the dealer's face-down card replaced by a placeholder), and `error {message}` for anything it refuses.
+If the host disconnects, any player may `start`/`newRound`; a player disconnected for 30 seconds, or gone, has their insurance declined and hands stood for them.
 
 ## License
 
