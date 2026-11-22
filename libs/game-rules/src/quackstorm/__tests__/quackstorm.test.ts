@@ -383,8 +383,12 @@ describe("win and lose", () => {
 });
 
 describe("mystery eggs", () => {
-  test("the same seed gives the same mystery-egg result", () => {
-    expect(mysteryOp(7, 4)).toEqual(mysteryOp(7, 4));
+  test("the same seed and gate always reveal the same in-pool operation", () => {
+    const op = mysteryOp(7, 4);
+    // Repeated calls must be stable (no hidden randomness) and the result must
+    // come from the mystery pool.
+    for (let i = 0; i < 20; i++) expect(mysteryOp(7, 4)).toEqual(op);
+    expect(MYSTERY_POOL).toContainEqual(op);
   });
 
   test("an egg reveals a real operation when first crossed, and replays identically", () => {
