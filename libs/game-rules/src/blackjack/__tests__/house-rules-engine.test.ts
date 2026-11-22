@@ -1,6 +1,6 @@
 import {
   canSplit, canDoubleDown, canSurrender, splitHand, createHand, calculatePayout,
-  dealerDraw, dealerDrawRule, isSoftHand, surrenderPayout, evenMoneyPayout,
+  calculateHandValue, dealerDraw, dealerDrawRule, isSoftHand, surrenderPayout, evenMoneyPayout,
   calculateInsurancePayout, settleHand, isBlackjack,
 } from "../engine";
 import { DEFAULT_HOUSE_RULES } from "../houseRules";
@@ -192,12 +192,13 @@ describe("dealer hits or stands on soft 17 per house rule", () => {
 
   test("H17: dealer hits a soft 17 (A+6) and keeps drawing per the normal rule", () => {
     const hand = [card(1), card(6)];
-    const deck = [card(5)]; // A+6+5 = 22 -> re-evaluated as 12 (soft breaks), still < 17, draws more
-    const deck2 = [...deck, card(9)]; // 12 + 9 = 21, stands
-    const result = dealerDraw(deck2, hand, rules({ dealerHitsSoft17: true }));
-    expect(result.hand.length).toBeGreaterThan(2);
-    const finalValue = result.hand.reduce((sum) => sum, 0); // sanity: just confirm it drew
-    expect(finalValue).toBeDefined();
+    const deck = [card(5), card(9)];
+    // H17 draws on the soft 17: A+6+5 = 22 (soft breaks to 12), still < 17,
+    // so it draws again: 12 + 9 = 21, stands.
+    const result = dealerDraw(deck, hand, rules({ dealerHitsSoft17: true }));
+    expect(result.hand.map((c) => c.rank)).toEqual([1, 6, 5, 9]);
+    expect(calculateHandValue(result.hand)).toBe(21);
+    expect(result.deck).toHaveLength(0);
   });
 
   test("dealerDrawRule: H17 hits an explicit soft 17, S17 does not", () => {
@@ -330,12 +331,11 @@ describe("rules matrix: identical cards settle differently under different House
     expect(h17.hand).toHaveLength(3); // hits
   });
 
-  test("insurance offered/settled the same way regardless of blackjack payout rule (independent toggles)", () => {
-    const dealerNatural = [card(1), card(13)];
-    const net32 = calculateInsurancePayout(50, dealerNatural);
-    const net65 = calculateInsurancePayout(50, dealerNatural); // insurance math is payout-rule-independent
-    expect(net32).toBe(net65);
-    expect(net32).toBe(100);
+  test("insurance is pure bet math — the payout rule never enters its settlement", () => {
+    // calculateInsurancePayout takes no HouseRules: only the bet and the dealer
+    // cards decide the result, so it settles identically under any payout rule.
+    expect(calculateInsurancePayout(50, [card(1), card(13)])).toBe(100); // natural: 2:1 net
+    expect(calculateInsurancePayout(50, [card(9), card(8)])).toBe(-50); // no natural: side bet lost
   });
 
   test("surrender is available under one ruleset and not another for the identical hand", () => {

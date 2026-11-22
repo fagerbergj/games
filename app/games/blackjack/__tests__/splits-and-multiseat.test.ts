@@ -203,7 +203,8 @@ describe("split aces one-card rule via the hook", () => {
 
     const seat = result.current.state.seats[0];
     expect(seat.hands[0].cards.map(c => c.rank)).toEqual([1, 13]);
-    expect(seat.hands[0].result?.result).not.toBe("blackjack");
+    // 21 beats the dealer's 18 (5 + 9 + 2 + 2) for a 1:1 win, never the blackjack bonus.
+    expect(seat.hands[0].result).toEqual({ result: "win", amount: 100 });
   });
 
   test("toggle OFF: a split-ace hand stays active and can be hit again", () => {
@@ -261,6 +262,7 @@ describe("multi-seat: independent bets, turns, and settlement", () => {
   });
 
   test("each seat's bankroll updates only by its own hand's result", () => {
+    // seat0 [10,9]=19, seat1 [8,8]=16, dealer 7+9=16 hits 5 -> 21: both seats lose.
     setDeck([10, 9, 8, 8, 7, 9, 5]);
     const { result } = renderHook(() => useBlackjack(2));
     const seat0Start = result.current.state.seats[0].bankroll;
@@ -276,8 +278,10 @@ describe("multi-seat: independent bets, turns, and settlement", () => {
     flush();
 
     const [seat0, seat1] = result.current.state.seats;
-    expect(seat0.bankroll).toBe(seat0Start + (seat0.hands[0].result?.amount ?? 0));
-    expect(seat1.bankroll).toBe(seat1Start + (seat1.hands[0].result?.amount ?? 0));
+    expect(seat0.hands[0].result).toEqual({ result: "loss", amount: -50 });
+    expect(seat1.hands[0].result).toEqual({ result: "loss", amount: -50 });
+    expect(seat0.bankroll).toBe(seat0Start - 50);
+    expect(seat1.bankroll).toBe(seat1Start - 50);
   });
 
   test("seat count can be configured from 1 to 5 before betting starts", () => {
