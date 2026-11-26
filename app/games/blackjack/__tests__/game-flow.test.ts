@@ -274,6 +274,7 @@ describe("bust on hit", () => {
     expect(hand.result?.amount).toBe(-50);
     expect(result.current.state.seats[0].bankroll).toBe(startBankroll - 50);
     expect(hand.cards).toHaveLength(3);
+    expect(result.current.state.dealerHand).toHaveLength(2);
     expect(result.current.state.dealerHand.every((c: Card) => c.faceUp)).toBe(true);
   });
 });

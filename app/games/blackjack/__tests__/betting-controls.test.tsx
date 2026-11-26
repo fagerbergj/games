@@ -51,7 +51,9 @@ describe("item 8: chip-based betting", () => {
 
   test("a bankroll below the smallest chip leaves every chip disabled and the circle uncommittable", () => {
     render(<BettingControls bankroll={2} pendingBet={0} lastWager={0} onBet={() => {}} />);
-    expect(screen.getByRole("button", { name: "Add $5 chip" })).toBeDisabled();
+    for (const denom of [5, 25, 100, 500]) {
+      expect(screen.getByRole("button", { name: `Add $${denom} chip` })).toBeDisabled();
+    }
     expect(screen.getByRole("button", { name: "Add a chip to place a bet" })).toBeDisabled();
   });
 

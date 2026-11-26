@@ -63,10 +63,16 @@ describe("joining and seats", () => {
 
   test("moving seats between rounds keeps the bankroll; mid-round it's refused", () => {
     const room = newRoom();
-    stackDeck(room, [10, 7, 9, 8]);
+    stackDeck(room, [10, 9, 9, 8, 10, 7, 9, 8]);
     const [a] = seated(room, "Ann");
+    a.do({ type: "bet", amount: 50 });
+    a.do({ type: "action", action: "stand" });
+    vi.runAllTimers();
+    expect(a.do({ type: "newRound" })).toBeNull();
+    expect(a.snap().table.seats[0].bankroll).toBe(550);
     expect(a.do({ type: "sit", seat: 3 })).toBeNull();
     expect(a.snap().table.seats.map(s => s.id)).toEqual(["slot-3"]);
+    expect(a.snap().table.seats[0].bankroll).toBe(550);
     a.do({ type: "bet", amount: 50 });
     expect(a.do({ type: "sit", seat: 1 })).toBe("change seats between rounds");
   });

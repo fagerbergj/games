@@ -233,8 +233,8 @@ describe("getBookAdvice — reasoning teaches the why, and varies by situation",
     expect(advice.reason.toLowerCase()).toContain("surrender");
   });
 
-  // Item 13: standing on 12 can never bust — the old wording ("busts on a ten-card
-  // either way") falsely implied hitting and standing were equally risky.
+  // Standing on 12 can never bust, so the hit explanation must compare bust odds
+  // against losing to the dealer's upcard rather than equating both risks.
   test("hard 12 vs a strong dealer card explains the hit without claiming standing can bust", () => {
     const advice = getBookAdvice([card(7), card(5)], up(9), rules()); // 12 vs 9 → hit
     expect(advice.book).toBe("hit");

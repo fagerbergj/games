@@ -45,7 +45,6 @@ export function isValidGridPosition(
   row: number,
   col: number
 ): boolean {
-  // Check if spot is empty
   if (gameState.grid[row][col] !== null) {
     return false;
   }
@@ -135,7 +134,6 @@ export function findPairsAddingTo10(grid: (Card | null)[][]): { row: number; col
     }
   }
 
-  // Find pairs adding to 10
   for (let i = 0; i < cards.length; i++) {
     for (let j = i + 1; j < cards.length; j++) {
       if (cards[i].rank + cards[j].rank === 10) {

@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import ChipStack from "../components/chip-stack";
 
-// A multi-chip wager used to render as one legible chip: the fan offset exceeded the
-// chip width, so each chip fully covered the last and $125 read as "$25".
+// Stacked chips can overlap on multi-chip wagers, so `showTotal` displays the
+// numeric wager explicitly while remaining opt-in for callers with their own label.
 describe("wager legibility", () => {
   test("showTotal states the wager as a number", () => {
     render(<ChipStack amount={125} showTotal />);
