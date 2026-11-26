@@ -130,7 +130,7 @@ export function useQuackstorm(initialLevel = 1): QuackstormControls {
   // Seed the first level on mount.
   useEffect(() => {
     if (!stateRef.current) start(initialLevel);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally run once on mount; stateRef guards re-entry
   }, []);
 
   return { phase, stars, level, levelCount, narrator, choice, canvasRef, onPointerDown, onPointerMove, onPointerUp, choose, replay, next };
