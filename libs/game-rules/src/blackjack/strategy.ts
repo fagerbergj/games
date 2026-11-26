@@ -162,8 +162,8 @@ function surrenderReason(total: number, d: number): string {
 
 /**
  * When a house rule blocks the book's pick, fall back per the chart's own convention:
- * double/split fall back to hit, except the one "Ds" cell (soft 18 vs 3-6) which falls
- * back to stand, and a blocked surrender always falls back to hit.
+ * surrender falls back to hit, double falls back to hit except the "Ds" cell (soft 18
+ * vs 3-6) which falls back to stand, and a blocked split plays its hard total (hit for A,A).
  */
 function fallbackAction(book: "double" | "split" | "surrender", hand: readonly Card[], d: number, isPair: boolean): "hit" | "stand" {
   if (book === "surrender") return "hit";

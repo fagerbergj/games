@@ -66,29 +66,12 @@ const sub = (value: number): GateOp => ({ kind: "sub", value });
 const div = (value: number): GateOp => ({ kind: "div", value });
 
 /**
- * Tuning notes. The opener gates stay small (×3–×5 against −3–−5) and every
- * subtractive opener releases angry survivors that carry the toll as their Keep
- * damage — so the wrong pick costs stars and a little time on every level
- * (measured in the difficulty tests: the − opener clears in under 1.5× the ×
- * opener on L1–L4 and about the same on L5) instead of the upper tolls starving
- * the stream and settling the level. The first gate is narrow and drifts like the
- * rest, so the player has to aim it — except L1's, which is static. The goose lane
- * starts as L1's central 46–54 lane (a still-aiming new player's held fire reaches
- * every goose), widens just enough at L2 (44–56) that a still centre aim starts
- * missing the edge geese, and widens further L3→L5, while L4–L5 stagger their two-goose
- * waves so a drag-aiming player can pop each member as it crosses their aim line.
- * Toll gates re-arm on a fixed timer (TOLL_REARM_STEPS, see step), so a −10 keeps
- * mattering all level without walling off single shots, and mystery eggs never
- * carry a toll (rng) so a − player's thin stream is not taxed twice. L1's first
- * wave is late on purpose (firstWaveAt: 600 — ten seconds in). L1 and L2 end
- * when their planned waves do; L3–L5 are endless — the geese keep spawning
- * after the planned waves, and the waves grow (L3–L4 every third wave, L5
- * later and every eighth) — so the flood, not the clock, is the difficulty:
- * a player who feeds only the geese starves the Keep (the goose-only bot
- * loses L3–L5), and the stars charge every goose that drifts to the kill line
- * (see LATE_GOOSE_PENALTY) while crediting the ones an aimed shot drops above
- * it. Difficulty is measured by the perfect-aim, weak, late-reactor, goose-only and
- * passive bots in the difficulty tests; see the tests.
+ * Level progression and tuning invariants (verified by the bot suite in `quackstorm.test.ts`):
+ * - Openers stay small (×3–×5 vs −3–−5); subtractive survivors keep − clears within 1.5× of ×.
+ * - First gate is static on L1 and narrows/drifts on L2–L5; L1 delays its first wave (600 steps).
+ * - Goose lanes widen L1 (46–54, reachable from center) → L2 (44–56) → L3–L5; multi-goose waves stagger.
+ * - L1–L2 end after `maxWaves`; L3–L5 run endless growing waves so ignoring gates loses to the flood.
+ * - Tolls re-arm on `TOLL_REARM_STEPS`, mystery eggs omit tolls, and stars score kill-line / early-pop time.
  */
 export const LEVELS: LevelConfig[] = [
   {

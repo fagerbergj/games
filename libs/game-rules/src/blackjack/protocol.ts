@@ -1,5 +1,5 @@
-import { getActiveHandActions, MAX_SEATS } from "./table";
-import type { BlackjackTableState, Card } from "./types";
+import { MAX_SEATS } from "./table";
+import type { ActiveHandActions, BlackjackTableState, Card } from "./types";
 import { isInt, parseMessage, ROOM_PARSERS, type Parsers, type RoomMessage, type ServerMessage as Envelope } from "../protocol";
 
 /** Blackjack's in-room messages between the multiplayer page and apps/game-server. */
@@ -30,7 +30,7 @@ export interface SlotInfo {
 export interface RoomSnapshot {
   code: string;
   /** canDirect: may deal and start a new round (the host, or anyone while the host is disconnected). */
-  you: { seat: number | null; isHost: boolean; canDirect: boolean; actions: ReturnType<typeof getActiveHandActions> };
+  you: { seat: number | null; isHost: boolean; canDirect: boolean; actions: ActiveHandActions | null };
   /** One entry per seat position; null = empty. A seated player missing from table.seats sits out this round. */
   slots: (SlotInfo | null)[];
   table: PublicTable;

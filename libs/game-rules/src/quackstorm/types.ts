@@ -122,7 +122,7 @@ export interface QuackstormState {
   rng: number;
 }
 
-/** A normalized 100x100 world: y=0 is the Keep, y=100 is the cannon. */
+/** A normalized 100x100 world: y increases downward from the Keep (keepY) toward the cannon (cannonY). */
 export const WORLD = {
   width: 100,
   height: 100,

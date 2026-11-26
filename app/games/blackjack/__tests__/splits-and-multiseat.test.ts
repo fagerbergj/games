@@ -94,7 +94,7 @@ describe("split mechanics via the hook", () => {
     expect(result.current.actions?.canSplit).toBe(false);
     expect(result.current.actions?.splitReason).toMatch(/limit reached/);
 
-    // Attempting a 5th split must be a no-op.
+    // Attempting a 4th split (beyond the 3-split cap) must be a no-op.
     act(() => { result.current.split(); });
     expect(result.current.state.seats[0].hands).toHaveLength(4);
   });
@@ -123,9 +123,10 @@ describe("split mechanics via the hook", () => {
   });
 
   test("each split hand is played to completion in turn, then settles independently", () => {
-    // player [8,8], dealer up=2 hole=3=5. Split draws 3 (hand A: 8+3=11) and 10 (hand B: 8+10=18).
-    // Hand A hits to 21 (draws 10), hand B stands at 18. Dealer draws to a fixed 19.
-    setDeck([8, 8, 2, 3, 3, 10, 10, 9]);
+    // Deal: player [8,8], dealer up=2 hole=3 (5). Split draws 3 for hand A (8+3=11);
+    // hand A hits 10 to 21 and auto-stands; hand B then receives 10 (8+10=18) and stands.
+    // Dealer draws 9 (14) and 5 (19), so hand A wins 1:1 (not blackjack) while hand B loses.
+    setDeck([8, 8, 2, 3, 3, 10, 10, 9, 5]);
     const { result } = renderHook(() => useBlackjack(1));
 
     act(() => { result.current.placeBet(0, 50); result.current.startRound(); });
@@ -133,17 +134,17 @@ describe("split mechanics via the hook", () => {
     // hand A: [8,3]=11 -> hit -> [8,3,10]=21 -> auto-stands at 21
     act(() => { result.current.hit(); });
     expect(result.current.state.seats[0].hands[0].cards.map(c => c.rank)).toEqual([8, 3, 10]);
-    // now hand B is active: [8,10]=18 -> stand
+    // Wait a beat for hand B to receive its second card, then stand on [8,10]=18.
+    flush();
+    expect(result.current.state.seats[0].hands[1].cards.map(c => c.rank)).toEqual([8, 10]);
     act(() => { result.current.stand(); });
 
     flush();
 
     const seat = result.current.state.seats[0];
     expect(seat.hands).toHaveLength(2);
-    expect(seat.hands[0].result).toBeDefined();
-    expect(seat.hands[1].result).toBeDefined();
-    // Hand A (21, not a natural since split) beats a dealer total below 21; hand B (18) also settles on its own.
-    expect(seat.hands[0].result?.result).not.toBe("blackjack");
+    expect(seat.hands[0].result).toEqual({ result: "win", amount: 50 });
+    expect(seat.hands[1].result).toEqual({ result: "loss", amount: -50 });
   });
 
   test("double after split honored when DAS is on", () => {

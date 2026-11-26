@@ -324,7 +324,7 @@ describe("rules matrix: identical cards settle differently under different House
 
   test("dealer soft-17 draw behavior differs between S17 and H17 on the same starting hand", () => {
     const softSeventeen = [card(1), card(6)];
-    const deck = [card(4)]; // if the dealer draws, this lands (soft 17+4 = soft 21... actually 11+4=15 or 21)
+    const deck = [card(4)]; // A + 6 + 4 = soft 21, so H17 draws once and stands
     const s17 = dealerDraw(deck, softSeventeen, rules({ dealerHitsSoft17: false }));
     const h17 = dealerDraw(deck, softSeventeen, rules({ dealerHitsSoft17: true }));
     expect(s17.hand).toHaveLength(2); // stands

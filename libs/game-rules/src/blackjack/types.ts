@@ -88,6 +88,16 @@ export type TablePhase =
   | "dealerTurn"
   | "result";
 
+export interface ActiveHandActions {
+  canHit: boolean;
+  canStand: boolean;
+  canDouble: boolean;
+  canSurrender: boolean;
+  canSplit: boolean;
+  splitOffered: boolean;
+  splitReason: string | null;
+}
+
 export interface BlackjackTableState {
   seats: Seat[];
   activeSeatIndex: number;

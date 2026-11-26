@@ -197,7 +197,7 @@ describe("Validation", () => {
       grid[1][1] = { id: "4", suit: "spades", rank: 2, faceUp: true };
       const pairs = findPairsAddingTo10(grid);
       
-      expect(pairs.length).toBeGreaterThan(0);
+      expect(pairs).toEqual([[{ row: 0, col: 0 }, { row: 1, col: 0 }]]);
     });
 
     it("should find single 10s", () => {
@@ -208,7 +208,7 @@ describe("Validation", () => {
       grid[1][1] = { id: "4", suit: "spades", rank: 2, faceUp: true };
       const pairs = findPairsAddingTo10(grid);
       
-      expect(pairs.length).toBeGreaterThan(0);
+      expect(pairs).toEqual([[{ row: 0, col: 0 }]]);
     });
   });
 });

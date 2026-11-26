@@ -31,7 +31,11 @@ const allCells = (): Coord[] =>
 describe("placement", () => {
   test("shipCells runs right, or down when vertical", () => {
     expect(shipCells({ ship: "destroyer", row: 2, col: 3, vertical: false })).toEqual([{ row: 2, col: 3 }, { row: 2, col: 4 }]);
-    expect(shipCells({ ship: "cruiser", row: 7, col: 9, vertical: true }).map(c => c.row)).toEqual([7, 8, 9]);
+    expect(shipCells({ ship: "cruiser", row: 7, col: 9, vertical: true })).toEqual([
+      { row: 7, col: 9 },
+      { row: 8, col: 9 },
+      { row: 9, col: 9 },
+    ]);
   });
 
   test("a full, in-bounds, non-overlapping fleet is valid, and touching ships are allowed", () => {

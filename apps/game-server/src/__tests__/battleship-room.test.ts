@@ -181,7 +181,6 @@ describe("turns", () => {
 });
 
 describe("hidden information", () => {
-  // Every ship in `board.ships` must be one whose every cell has been hit.
   const allSunk = (board: BattleshipSnapshot["boards"][number]) =>
     board.ships.every(p => shipCells(p).every(c => board.shots.some(s => s.hit && s.row === c.row && s.col === c.col)));
 

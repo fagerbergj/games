@@ -5,7 +5,7 @@ import {
 } from "./engine";
 import { createShoe, needsReshuffle } from "./shoe";
 import { sanitizeHouseRules } from "./houseRules";
-import type { BlackjackTableState, Seat, Hand, HouseRules, Card, Rng } from "./types";
+import type { ActiveHandActions, BlackjackTableState, Seat, Hand, HouseRules, Card, Rng } from "./types";
 
 export const STARTING_BANKROLL = 500;
 export const MIN_SEATS = 1;
@@ -48,7 +48,7 @@ export function currentHand(state: BlackjackTableState): { seat: Seat; hand: Han
 }
 
 /** What the seat currently on the clock may do with its active hand, and why not otherwise. */
-export function getActiveHandActions(state: BlackjackTableState) {
+export function getActiveHandActions(state: BlackjackTableState): ActiveHandActions | null {
   if (state.phase !== "playerTurns") return null;
   const cur = currentHand(state);
   // A one-card hand is still waiting for its deal (see the pending-deal effect), so no actions yet.

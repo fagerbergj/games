@@ -33,6 +33,7 @@ describe("dealerDraw", () => {
     const result = dealerDraw(deck, [...hand]);
     expect(result.hand).toHaveLength(2);
     expect(result.hand[0].rank + result.hand[1].rank).toBe(17);
+    expect(result.deck).toEqual(deck);
   });
 
   test("hits to stand — draws once then stops", () => {
@@ -88,15 +89,19 @@ describe("dealerDraw", () => {
   });
 
   test("returns new arrays, does not mutate input", () => {
-    const hand = [card(10), card(7)];  // 17 → stands
-    const deck = [card(8)];
-    const origLenHand   = hand.length;
-    const origLenDeck   = deck.length;
+    const hand = [card(10), card(6)];  // 16 → draws once and stands on 21
+    const deck = [card(5), card(8)];
+    const origLenHand = hand.length;
+    const origLenDeck = deck.length;
 
-    dealerDraw(deck, [...hand]);
+    const result = dealerDraw(deck, hand);
 
+    expect(result.hand).not.toBe(hand);
+    expect(result.deck).not.toBe(deck);
     expect(hand).toHaveLength(origLenHand);
     expect(deck).toHaveLength(origLenDeck);
+    expect(result.hand).toHaveLength(3);
+    expect(result.deck).toHaveLength(1);
   });
 
   test("each draw consumes the deck — no repeated top card across multiple draws", () => {

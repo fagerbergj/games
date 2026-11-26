@@ -165,10 +165,20 @@ JSON text frames; types live in `libs/game-rules/src/blackjack/protocol.ts`.
 | `newRound` | Host clears a finished round |
 | `leave` | Give up your seat and leave |
 
-The `action` values are `hit`, `stand`, `double`, `split` and `surrender` on your turn, `insurance`, `declineInsurance` and `evenMoney` in the insurance phase; `buyBackIn` is valid when broke.
+Valid `action` values:
+
+- **Your turn**: `hit`, `stand`, `double`, `split`, `surrender`
+- **Insurance phase**: `insurance`, `declineInsurance`, `evenMoney`
+- **When broke**: `buyBackIn`
+
 You may move between rounds; sitting mid-round waits for the next one. Joining with a `token` from an earlier `joined` re-claims that seat and host role.
 
-The server replies `joined {code, token}` once, `state {room}` after every change (filtered per player: no shoe, the dealer's face-down card replaced by a placeholder), and `error {message}` for anything it refuses.
+The server replies with:
+
+- `joined {code, token}` — once on join
+- `state {room}` — after every change (filtered per player: no shoe, and the dealer's face-down card replaced by a placeholder)
+- `error {message}` — for anything it refuses
+
 If the host disconnects, any player may `start`/`newRound`; a player disconnected for 30 seconds, or gone, has their insurance declined and hands stood for them.
 
 ## License

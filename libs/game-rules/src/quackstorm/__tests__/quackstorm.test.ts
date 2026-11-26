@@ -267,7 +267,6 @@ describe("gate tolls across steps", () => {
         : step(out);
     }
     for (let i = 480 + waveInterval; i < 830 && out.phase === "playing"; i++) out = step(out);
-    // Eight shots fired (waveInterval / FIRE_COOLDOWN); all eight reached the Keep.
     expect(base - out.keepHp).toBe(8);
   });
 });
@@ -449,10 +448,8 @@ describe("level difficulty", () => {
   });
 
   test("a late-rescue bot wins every level: no difficulty cliff", () => {
-    // The curve used to jump here: the weak bot won 20/20 at L3 but only 7/20 at L4
-    // and 0/20 at L5, because a whole goose wave marched down in step — faster than
-    // the cannon's cooldown, so late players had nothing they could reach. Waves are
-    // now staggered (GOOSE_STAGGER), so the same bot clears every level.
+    // Waves are staggered (GOOSE_STAGGER) so multi-goose waves never arrive faster
+    // than the cannon's cooldown, letting a late-rescue bot clear every level.
     for (const l of LEVELS) {
       expect(playWeak(l.id, 0).phase, `L${l.id}`).toBe("won");
     }
@@ -563,10 +560,8 @@ describe("stars reward play", () => {
   const SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
 
   test("the weak bot with × gets 3★ on at most 10/20 seeds, L2–L5 (20 seeds)", () => {
-    // Round-7 finding 3: the weak bot used to get 3★ on 20/20 seeds with × on
-    // L2 and L5 — stars didn't reward anything. Star time is clear time plus one
-    // fire-rate per goose that reached the kill line, minus one per aimed pop
-    // above it, so the gate-feeding bot is the one who outruns the threshold.
+    // Star time adds one fire-rate per goose reaching the kill line and subtracts one per
+    // aimed early pop, keeping a reactive weak bot out of 3★ on most L2–L5 seeds.
     for (const level of [2, 3, 4, 5]) {
       const three = SEEDS.filter((seed) => playWeak(level, 0, seed).stars === 3).length;
       expect(three, `L${level} × 3★ ${three}/20`).toBeLessThanOrEqual(10);
@@ -574,10 +569,8 @@ describe("stars reward play", () => {
   });
 
   test("the perfect bot's mean stars are at least the weak bot's (20 seeds, × opener, every level)", () => {
-    // Round-8: with the aim bookkeeping fixed, × is the higher-star opener on
-    // every level for both bots (pinned above), so within the × opener the
-    // play-quality ranking holds: the bot that feeds the gates early and pops
-    // before the kill line is the one the stars reward.
+    // Within the × opener, feeding gates early and popping geese above the kill line
+    // must earn at least as many mean stars as reactive play on every level.
     for (const l of LEVELS) {
       const mean = (bot: (level: number, pick: 0 | 1, seed: number) => QuackstormState) =>
         SEEDS.reduce((sum, seed) => sum + bot(l.id, 0, seed).stars, 0) / SEEDS.length;
@@ -586,14 +579,9 @@ describe("stars reward play", () => {
   });
 
   test("the × opener earns strictly more mean stars than the − opener, every level (20 seeds, perfect and weak)", () => {
-    // Round-8 finding 1: the − opener used to earn as many stars as ×, or more —
-    // fan() gave every offspring of an angry crossing the player's aim, so the
-    // ×2 copies of − survivors earned the early-pop credit (L4: 21.1 credits per
-    // − run against 2.9 for ×), and a slow − clear beat a fast × one (L4 seed 4:
-    // − in 35.4 s for 3★ against × in 27.4 s for 2★). Only the first
-    // `crossing.length` offspring carry on the aim now; L1's three-star bar was
-    // re-measured to 790 with the credit; and the L3 opener is −3 — a higher
-    // toll would make − faster, because the anger damage equals the toll.
+    // Only the first `crossing.length` offspring of an angry crossing inherit `aimed`
+    // (so multiplied copies don't farm early-pop star credits), and L3 uses a −3 toll
+    // because higher tolls raise anger damage and speed up − clears.
     for (const l of LEVELS) {
       for (const bot of [play, playWeak]) {
         const stars = (pick: 0 | 1) => SEEDS.map((seed) => bot(l.id, pick, seed).stars);
@@ -622,11 +610,8 @@ describe("full levels", () => {
   );
 
   test("level 5: the subtractive opener no longer stalls the level (20 seeds)", () => {
-    // The −5 toll used to starve the whole 30-shot arm through the toll stack, and
-    // 7 of 20 seeds ran to the 600 s cap with a live cannon. Now the opener releases
-    // angry survivors carrying the toll (dmg = the opener's − value), so the wrong
-    // pick costs time: every seed still wins, every one slower than the × opener, and none
-    // drifts far from it.
+    // Angry survivors carry the −5 toll as Keep damage so the wrong opener stays
+    // winnable across all 20 seeds while clearing slower than × (within 1.5×).
     for (let seed = 1; seed <= 20; seed++) {
       const good = play(5, 0, seed);
       const bad = play(5, 1, seed);
@@ -770,8 +755,8 @@ describe("goose waves", () => {
 
 describe("the new player", () => {
   test("holding fire at the centre wins level 1 with either opener", () => {
-    // The exact seed and posture from the round-5 review: aim 50, fire held, no
-    // aim moves — the −2 opener used to lose it at 21.9 s.
+    // Seed 1235 matches the default L1 page seed (1234 + level); a passive center aim
+    // must clear L1 with either opener on it and across 20 extra seeds.
     expect(playPassive(1, 0, 1235).phase).toBe("won");
     expect(playPassive(1, 1, 1235).phase).toBe("won");
     for (let seed = 1; seed <= 20; seed++) {
@@ -781,11 +766,8 @@ describe("the new player", () => {
   });
 
   test("the passive player: no 20→0 jump between adjacent levels (20 seeds, both openers)", () => {
-    // Round-7 finding 2: the passive cliff moved from L3→L4 to L2→L3 (passive
-    // won L2 20/20, then L3 0/20 with −). L2's lane (44–56) is now wider than
-    // L1's (46–54), so a centre aim starts missing the edge geese on L2; the
-    // measured ramp 20→13→2→0 (×) and 20→3→0→0 (−) keeps every adjacent pair
-    // from being a 20→0 cliff.
+    // L2's lane (44–56) is wider than L1's (46–54) so a stationary center aim starts
+    // missing edge geese on L2, keeping passive win rates gradual with no 20→0 cliff.
     const SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
     for (const pick of [0, 1] as const) {
       const wins = LEVELS.map((l) =>
