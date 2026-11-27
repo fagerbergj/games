@@ -6,6 +6,9 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
+    linterOptions: {
+      reportUnusedDisableDirectives: "error",
+    },
     rules: {
       complexity: ["error", 15],
       "max-depth": ["error", 4],
